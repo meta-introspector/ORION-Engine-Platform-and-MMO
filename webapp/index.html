@@ -1,0 +1,1246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ORION Hub — static single-page app</title>
+<meta name="description" content="Offline, single-file ORION knowledge hub: verified scoring rules, bridges, 13 levels, meters, Zoo gate, DAG-CBOR / IPFS CAR export, RDF, sharing by URL.">
+<style>
+  :root { --fg:#e8ecff; --mut:#9aa3c7; --card:rgba(12,16,40,.82); --acc:#7fd4ff; --ok:#7dffb0; --bad:#ff8f8f; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.45 system-ui, sans-serif; color:var(--fg); background:#050818; }
+  #bg { position:fixed; inset:0; width:100vw; height:100vh; z-index:-1; }
+  header { display:flex; align-items:center; gap:14px; padding:14px 20px; }
+  header h1 { margin:0; font-size:22px; letter-spacing:.04em; }
+  header small { color:var(--mut); }
+  nav { display:flex; flex-wrap:wrap; gap:6px; padding:0 20px 10px; }
+  nav button { background:rgba(255,255,255,.08); color:var(--fg); border:1px solid rgba(255,255,255,.15); border-radius:18px; padding:5px 12px; cursor:pointer; }
+  nav button.on { background:var(--acc); color:#021; }
+  main { padding:0 20px 40px; max-width:1100px; }
+  section { display:none; } section.on { display:block; }
+  .card { background:var(--card); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:14px 16px; margin:10px 0; backdrop-filter:blur(4px); }
+  input, select, textarea { background:#0b1030; color:var(--fg); border:1px solid #334; border-radius:6px; padding:4px 6px; font:inherit; }
+  button.b { background:#1b2560; color:var(--fg); border:1px solid #3a4aa0; border-radius:6px; padding:4px 10px; cursor:pointer; margin:2px; }
+  button.b:hover { background:#27348a; }
+  .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:4px 0; }
+  .mut { color:var(--mut); } .ok { color:var(--ok); } .bad { color:var(--bad); }
+  code, .mono { font-family:ui-monospace, monospace; font-size:13px; word-break:break-all; }
+  table { border-collapse:collapse; } td, th { padding:3px 8px; border-bottom:1px solid #223; text-align:left; }
+  .score { font-size:20px; font-weight:600; }
+  a { color:var(--acc); }
+  .tag { display:inline-block; background:#20306e; border-radius:10px; padding:0 8px; margin:1px; font-size:12px; }
+  .bar { height:14px; border-radius:7px; background:linear-gradient(90deg,#ff9a3c,#7fd4ff); position:relative; }
+  .bar i { position:absolute; top:-4px; width:4px; height:22px; background:#fff; border-radius:2px; }
+  .agrid { display:grid; gap:8px; overflow-x:auto; align-items:start; }
+  .ghd { font-weight:600; color:var(--acc); font-size:13px; padding:4px; }
+  .gcell { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); border-radius:8px; padding:8px; min-width:0; overflow:hidden; }
+  .small { font-size:12px; }
+  #tourBar { position:fixed; left:0; right:0; bottom:0; display:none; gap:8px; align-items:center; flex-wrap:wrap; padding:8px 14px; background:rgba(5,8,24,.95); border-top:1px solid #3a4aa0; z-index:5; }
+  #tCap { flex:1; min-width:240px; font-size:14px; }
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<header>
+  <svg width="56" height="56" viewBox="-30 -30 60 60" aria-label="ORION 13-level ring">
+    <g id="logoRing">
+      <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="26s" repeatCount="indefinite"/>
+    </g>
+    <circle r="6" fill="#7fd4ff"><animate attributeName="r" values="5;7;5" dur="3s" repeatCount="indefinite"/></circle>
+  </svg>
+  <div><h1>ORION Hub</h1><small>single file · offline · no server · your data stays in this browser unless you share it</small></div>
+  <button class="b" id="hdrTour" title="spoken guided tour of the app">🔊 guided tour</button>
+</header>
+<nav id="nav"></nav>
+<main>
+
+<section id="claims">
+  <div class="card">
+    <div class="row"><b>New claim</b>
+      <input id="nText" placeholder="claim / concept" size="32">
+      <input id="nDisc" placeholder="discipline" size="12">
+      <input id="nTags" placeholder="tags, comma separated" size="26">
+      <button class="b" id="nAdd">add</button></div>
+    <div class="mut">Score = max(0, strongest support − strongest challenge) / 1.5. Repeating evidence or adding weaker evidence changes nothing (anti-volume, proved in Lean).</div>
+  </div>
+  <div id="claimList"></div>
+</section>
+
+<section id="bridges">
+  <div class="card">
+    <div class="row"><b>Cross-discipline bridges</b> threshold θ =
+      <input id="theta" type="range" min="0" max="100" value="34"> <span id="thetaV"></span></div>
+    <div class="mut">A bridge links two claims from <i>different</i> disciplines whose tag sets have Jaccard similarity ≥ θ. Each bridge shows the tags it shares.</div>
+    <svg id="graph" width="100%" viewBox="-160 -120 320 240" style="max-height:360px"></svg>
+    <div id="bridgeList"></div>
+  </div>
+</section>
+
+<section id="levels">
+  <div class="card">
+    <div class="row"><b>13-level path</b> XP per level k = <input id="kIn" size="4"></div>
+    <div class="mut">XP = sum of scores of distinct claims. level = min(13, 1 + ⌊XP / k⌋). Resubmitting the same claim earns nothing.</div>
+    <svg id="levelRing" width="100%" viewBox="-130 -130 260 260" style="max-height:320px"></svg>
+    <div id="levelInfo" class="score"></div>
+  </div>
+</section>
+
+<section id="meters">
+  <div class="card">
+    <div class="row"><b>Kronos / Orion meter</b> α = <input id="alphaIn" size="5"> start = <input id="m0In" size="5"></div>
+    <div class="row"><button class="b" id="evK">Kronos event (0)</button><button class="b" id="evO">Orion event (1)</button><button class="b" id="evMix">mixed event (1/2)</button><button class="b" id="evClr">clear history</button></div>
+    <div class="bar"><i id="meterMark"></i></div>
+    <div class="row"><span>Kronos</span><span style="flex:1"></span><span>Orion</span></div>
+    <div id="meterInfo" class="mono"></div>
+    <div class="mut">m ← (1 − α)·m + α·s. The meter stays in [0, 1], spikes fade, and there is no payment input. The background shader colour follows the meter.</div>
+  </div>
+</section>
+
+<section id="zoo">
+  <div class="card">
+    <b>Zoo admission gate</b>
+    <div class="row"><label><input type="checkbox" id="zHuman"> human approved</label>
+      <label><input type="checkbox" id="zFrozen"> preregistered (frozen before outcome)</label></div>
+    <div class="row">auditor verdicts: <span id="zVetoes"></span><button class="b" id="zAdd">+ auditor</button></div>
+    <div id="zOut" class="score"></div>
+    <div class="mut">admit = human approved AND preregistered AND no veto. More auditors can never turn a rejection into an admission.</div>
+  </div>
+</section>
+
+<section id="share">
+  <div class="card"><b>Share by URL</b>
+    <div class="row"><button class="b" id="shCopy">copy share link</button><span id="shMsg" class="mut"></span></div>
+    <div class="mut">The whole state is packed into the link after <code>#s=</code>. Nothing is uploaded.</div></div>
+  <div class="card"><b>Immutable snapshots (DAG-CBOR / IPFS)</b>
+    <div class="row"><button class="b" id="snap">snapshot now</button><button class="b" id="carOut">download .car</button><button class="b" id="cborOut">download .cbor block</button></div>
+    <div id="snapInfo" class="mono"></div>
+    <div class="mut">Each snapshot is encoded as DAG-CBOR and named by its CIDv1 (sha2-256). The same bytes always give the same CID, and any edit changes it. A <code>.car</code> file can be carried offline (sneakernet: USB stick, mail, UUCP-style batch transfer), imported with <code>ipfs dag import</code>, or put on an archive server. Snapshot log (append-only):</div>
+    <ol id="snapLog" class="mono"></ol></div>
+  <div class="card"><b>Import</b>
+    <div class="row"><input type="file" id="impFile" accept=".car,.cbor,.json"><span id="impMsg"></span></div>
+    <div class="mut">A <code>.car</code> or <code>.cbor</code> import is re-hashed first and refused if the CID doesn't match its bytes.</div></div>
+  <div class="card"><b>Linked data</b>
+    <div class="row"><button class="b" id="ttlOut">download RDF (Turtle + OWL terms)</button><button class="b" id="jsonOut">download JSON</button></div></div>
+  <div class="card"><b>Media</b>
+    <div class="row"><button class="b" id="gifOut">record animated GIF (3 s)</button><button class="b" id="vidOut">record video (5 s)</button><span id="mediaMsg" class="mut"></span></div>
+    <div class="mut">Both capture the WebGL background. Video is MP4 where the browser supports it, otherwise WebM.</div></div>
+</section>
+
+<section id="atlas">
+  <div class="card">
+    <div class="row"><b>Knowledge Atlas</b> element <select id="atEl"></select>
+      knowledge level n = <input id="atLvl" type="range" min="1" max="7" value="3"> <span id="atLvlV" class="mut"></span>
+      <button class="b" id="atTour">▶ guided tour</button></div>
+    <div id="atLegend" class="small"></div>
+    <div class="mut small">At level n each element is shown in the first n forms (card, graph, animation, speech, numbers, quiz, linked data) through the first n lenses (plain words, framework, evidence, try it, make it, where it comes from, open question): n² representations, from 1 at level 1 to 49 at level 7.</div>
+  </div>
+  <div id="atIncoming"></div>
+  <div class="card"><div id="atHead"></div><div id="atGrid" class="agrid"></div></div>
+  <div class="card"><b>Knowledge graph</b> <span class="mut small">click a node to open it; colours show status</span><div id="atGlobal"></div></div>
+  <div class="card"><b>Remix or submit a representation</b> <span id="sbParent" class="mut small"></span>
+    <div class="row"><select id="sbKind"><option value="anim">animation (playbook)</option><option value="text">text for a lens</option></select>
+      lens <select id="sbLens"></select> <input id="sbTitle" placeholder="title" size="22"> <input id="sbBy" placeholder="your name (optional)" size="16"></div>
+    <div class="row" style="align-items:flex-start">
+      <textarea id="sbPb" rows="9" cols="52" class="mono" spellcheck="false"></textarea>
+      <textarea id="sbText" rows="9" cols="52" placeholder="your explanation for this lens (plain text)"></textarea>
+      <div id="sbPrev" style="width:240px"></div></div>
+    <div id="sbErr"></div>
+    <div class="row"><button class="b" id="sbLink">copy share link</button><button class="b" id="sbSave">save to my gallery</button><button class="b" id="sbReset">reset</button><span id="sbMsg" class="mut"></span></div>
+    <input id="sbOut" class="mono" style="width:100%" readonly placeholder="share link appears here">
+    <div class="mut small">Playbook: one statement per line. <code>title "…"</code>, <code>dur 8</code>, <code>bg #000</code>, then shapes <code>circle</code>, <code>ring</code>, <code>star</code>, <code>poly</code>, <code>line</code>, <code>text "…"</code> with keys <code>r n inner dot x y x1 y1 x2 y2 size stroke fill w dash spin pulse fade</code>. Numbers are clamped, colours must be <code>#rgb</code>/<code>#rrggbb</code> or a basic name, at most 40 shapes. Links carry the playbook, never raw SVG.</div></div>
+  <div class="card"><b>Community gallery</b> <span class="mut small">stored in this browser; unreviewed until someone checks it</span><div id="atGallery"></div></div>
+</section>
+
+<section id="verify">
+  <div class="card"><b>Conformance</b>
+    <div class="row"><button class="b" id="runGold">run golden vectors</button><span id="goldOut"></span></div>
+    <div class="mut">The same 30 cases Lean checks in <code>RequestProject/Conformance/GoldenVectors.lean</code>. If this JavaScript copy of the rules drifts from the Lean definitions, a case fails.</div>
+    <table id="goldTable"></table></div>
+  <div class="card mut"><b>Limits.</b> This is a static app, not a network. It has no libp2p, relay or archive server built in. Sharing works by URL, by file (.car / .json), or by pinning to IPFS. The rules here are a JavaScript port, checked against the golden cases, not WebAssembly compiled from Lean.</div>
+</section>
+</main>
+<div id="tourBar" role="region" aria-label="guided tour">
+  <button class="b" id="tPrev" title="previous">⏮</button><button class="b" id="tPlay" title="play / pause">▶</button><button class="b" id="tNext" title="next">⏭</button><button class="b" id="tStop" title="stop and close">⏹</button>
+  <select id="tRate" title="speed"><option value="0.8">0.8×</option><option value="1" selected>1×</option><option value="1.2">1.2×</option><option value="1.5">1.5×</option></select>
+  <select id="tVoice"></select><label class="small"><input type="checkbox" id="tMute"> captions only</label>
+  <div id="tCap" aria-live="polite"></div>
+</div>
+
+<script id="orion-core">
+(function (root) {
+'use strict';
+/* ===== exact rationals (BigInt) ===== */
+function gcd(a, b) { a = a < 0n ? -a : a; b = b < 0n ? -b : b; while (b) { [a, b] = [b, a % b]; } return a; }
+class Q {
+  constructor(n, d = 1n) { n = BigInt(n); d = BigInt(d); if (d === 0n) throw new Error('division by zero');
+    if (d < 0n) { n = -n; d = -d; } const g = gcd(n, d) || 1n; this.n = n / g; this.d = d / g; }
+  static of(x) {
+    if (x instanceof Q) return x;
+    if (typeof x === 'bigint') return new Q(x);
+    if (typeof x === 'number') { if (!Number.isInteger(x)) throw new Error('use strings for fractions'); return new Q(BigInt(x)); }
+    const s = String(x).trim();
+    if (s.includes('/')) { const [a, b] = s.split('/'); return new Q(BigInt(a.trim()), BigInt(b.trim())); }
+    if (s.includes('.')) { const neg = s.startsWith('-'); const t = neg ? s.slice(1) : s; const [i, f] = t.split('.');
+      return new Q(BigInt((i || '0') + f) * (neg ? -1n : 1n), 10n ** BigInt(f.length)); }
+    return new Q(BigInt(s));
+  }
+  add(o) { o = Q.of(o); return new Q(this.n * o.d + o.n * this.d, this.d * o.d); }
+  sub(o) { o = Q.of(o); return new Q(this.n * o.d - o.n * this.d, this.d * o.d); }
+  mul(o) { o = Q.of(o); return new Q(this.n * o.n, this.d * o.d); }
+  div(o) { o = Q.of(o); return new Q(this.n * o.d, this.d * o.n); }
+  cmp(o) { o = Q.of(o); const l = this.n * o.d, r = o.n * this.d; return l < r ? -1 : l > r ? 1 : 0; }
+  lt(o) { return this.cmp(o) < 0; } eq(o) { return this.cmp(o) === 0; }
+  floor() { let q = this.n / this.d; if (this.n < 0n && q * this.d !== this.n) q -= 1n; return q; }
+  toString() { return this.d === 1n ? String(this.n) : this.n + '/' + this.d; }
+  toNumber() { return Number(this.n) / Number(this.d); }
+}
+const qmin = (a, b) => (a.cmp(b) <= 0 ? a : b), qmax = (a, b) => (a.cmp(b) >= 0 ? a : b);
+
+/* ===== the rules (mirror the Lean definitions) ===== */
+const TIER = { primary: Q.of(1), audit: Q.of('4/5'), secondary: Q.of('1/2'), unverified: Q.of('1/10') };
+const RIGOR = { cryptographic: Q.of(1), disclosed: Q.of('4/5'), opaque: Q.of('1/10') };
+function corroboration(r, n) { return RIGOR[r].lt('4/5') ? Q.of(1) : qmin(Q.of(1).add(new Q(BigInt(n), 10n)), Q.of('3/2')); }
+function evidenceWeight(t, r, n, d = 0) { return TIER[t].mul(RIGOR[r]).mul(corroboration(r, n)).mul(Q.of(1).sub(Q.of(d))); }
+function baseWeight(e) { return evidenceWeight(e.tier, e.rigor, e.sources, 0); }
+function best(l) { return l.reduce((m, e) => qmax(baseWeight(e), m), Q.of(0)); }
+function discrepancy(s, c) { const bs = best(s); return bs.eq(0) ? Q.of(1) : qmin(Q.of(1), best(c).div(bs)); }
+function claimScore(s, c) { return best(s).mul(Q.of(1).sub(discrepancy(s, c))).div('3/2'); }
+function levelOf(k, xp) { const f = Q.of(xp).div(Q.of(k)).floor(); const fl = f < 0n ? 0n : f; return Number(fl + 1n < 13n ? fl + 1n : 13n); }
+const evKey = e => JSON.stringify([e.tier, e.rigor, e.sources]);
+function experience(contribs) {
+  const seen = new Set(); let xp = Q.of(0);
+  for (const c of contribs) { const key = JSON.stringify([c.support.map(evKey), c.conflict.map(evKey)]);
+    if (!seen.has(key)) { seen.add(key); xp = xp.add(claimScore(c.support, c.conflict)); } }
+  return xp;
+}
+function meterStep(a, m, s) { a = Q.of(a); return Q.of(1).sub(a).mul(m).add(a.mul(s)); }
+function meterRun(a, m, events) { return events.reduce((acc, s) => meterStep(a, acc, s), Q.of(m)); }
+function admit(human, frozen, vetoes) { return !!human && !!frozen && !vetoes.some(Boolean); }
+function jaccard(A, B) { const a = new Set(A), b = new Set(B); const inter = [...a].filter(x => b.has(x)).length;
+  const uni = new Set([...a, ...b]).size; return uni === 0 ? Q.of(0) : new Q(BigInt(inter), BigInt(uni)); }
+function bridges(items, theta) {
+  const out = [];
+  for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) {
+    const a = items[i], b = items[j]; if (a.disc === b.disc) continue;
+    const s = jaccard(a.tags, b.tags); if (s.cmp(theta) >= 0) out.push({ i, j, sim: s, shared: a.tags.filter(t => b.tags.includes(t)) });
+  }
+  return out;
+}
+
+/* ===== DAG-CBOR, CID, CAR ===== */
+const te = new TextEncoder(), td = new TextDecoder();
+function cmpBytes(a, b) { for (let i = 0; i < Math.min(a.length, b.length); i++) if (a[i] !== b[i]) return a[i] - b[i]; return a.length - b.length; }
+function head(major, n) {
+  n = BigInt(n); const m = major << 5;
+  if (n < 24n) return [m | Number(n)];
+  if (n < 256n) return [m | 24, Number(n)];
+  if (n < 65536n) return [m | 25, Number(n >> 8n), Number(n & 255n)];
+  if (n < 4294967296n) return [m | 26, ...[24n, 16n, 8n, 0n].map(s => Number((n >> s) & 255n))];
+  return [m | 27, ...[56n, 48n, 40n, 32n, 24n, 16n, 8n, 0n].map(s => Number((n >> s) & 255n))];
+}
+class CIDLink { constructor(bytes) { this.bytes = bytes; } }
+function encodeDagCbor(v) {
+  const out = [];
+  const push = arr => { for (const x of arr) out.push(x); };
+  (function enc(x) {
+    if (x === null) out.push(0xf6);
+    else if (x === true) out.push(0xf5);
+    else if (x === false) out.push(0xf4);
+    else if (typeof x === 'number' || typeof x === 'bigint') {
+      if (typeof x === 'number' && !Number.isInteger(x)) throw new Error('floats not allowed: store fractions as strings');
+      const b = BigInt(x); push(b >= 0n ? head(0, b) : head(1, -1n - b));
+    } else if (typeof x === 'string') { const u = te.encode(x); push(head(3, u.length)); push(u); }
+    else if (x instanceof Uint8Array) { push(head(2, x.length)); push(x); }
+    else if (x instanceof CIDLink) { out.push(0xd8, 0x2a); enc(Uint8Array.from([0, ...x.bytes])); }
+    else if (Array.isArray(x)) { push(head(4, x.length)); x.forEach(enc); }
+    else if (typeof x === 'object') {
+      const ks = Object.keys(x).filter(k => x[k] !== undefined).map(k => [k, te.encode(k)]);
+      ks.sort((a, b) => a[1].length - b[1].length || cmpBytes(a[1], b[1]));
+      push(head(5, ks.length)); for (const [k] of ks) { enc(k); enc(x[k]); }
+    } else throw new Error('cannot encode ' + typeof x);
+  })(v);
+  return Uint8Array.from(out);
+}
+function decodeDagCbor(bytes) {
+  let p = 0;
+  function arg(info) {
+    if (info < 24) return BigInt(info);
+    const len = { 24: 1, 25: 2, 26: 4, 27: 8 }[info]; if (!len) throw new Error('bad CBOR');
+    let n = 0n; for (let i = 0; i < len; i++) n = (n << 8n) | BigInt(bytes[p++]); return n;
+  }
+  function dec() {
+    const b = bytes[p++]; if (b === undefined) throw new Error('truncated CBOR');
+    const major = b >> 5, info = b & 31;
+    if (major === 7) { if (b === 0xf4) return false; if (b === 0xf5) return true; if (b === 0xf6) return null; throw new Error('unsupported simple/float'); }
+    const n = arg(info);
+    switch (major) {
+      case 0: return n <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(n) : n;
+      case 1: { const v = -1n - n; return v >= BigInt(Number.MIN_SAFE_INTEGER) ? Number(v) : v; }
+      case 2: { const s = bytes.slice(p, p + Number(n)); p += Number(n); return s; }
+      case 3: { const s = td.decode(bytes.slice(p, p + Number(n))); p += Number(n); return s; }
+      case 4: { const a = []; for (let i = 0n; i < n; i++) a.push(dec()); return a; }
+      case 5: { const o = {}; for (let i = 0n; i < n; i++) { const k = dec(); o[k] = dec(); } return o; }
+      case 6: { const v = dec(); if (n === 42n) return new CIDLink(v.slice(1)); throw new Error('unsupported tag'); }
+    }
+  }
+  const v = dec(); if (p !== bytes.length) throw new Error('trailing bytes'); return v;
+}
+async function sha256(bytes) { return new Uint8Array(await root.crypto.subtle.digest('SHA-256', bytes)); }
+async function cidOf(bytes, codec = 0x71) { return Uint8Array.from([0x01, codec, 0x12, 0x20, ...(await sha256(bytes))]); }
+function base32(bytes) {
+  const A = 'abcdefghijklmnopqrstuvwxyz234567'; let bits = 0, val = 0, s = '';
+  for (const b of bytes) { val = (val << 8) | b; bits += 8; while (bits >= 5) { s += A[(val >>> (bits - 5)) & 31]; bits -= 5; } val &= (1 << bits) - 1; }
+  if (bits > 0) s += A[(val << (5 - bits)) & 31]; return s;
+}
+const cidString = c => 'b' + base32(c);
+function varint(n) { const o = []; while (n >= 0x80) { o.push((n & 0x7f) | 0x80); n = Math.floor(n / 128); } o.push(n); return o; }
+function readVarint(b, p) { let n = 0, s = 1; for (;;) { const x = b[p++]; n += (x & 0x7f) * s; if (x < 0x80) return [n, p]; s *= 128; } }
+function makeCar(cid, block) {
+  const hdr = encodeDagCbor({ roots: [new CIDLink(cid)], version: 1 });
+  return Uint8Array.from([...varint(hdr.length), ...hdr, ...varint(cid.length + block.length), ...cid, ...block]);
+}
+async function readCar(bytes) {
+  let [hl, p] = readVarint(bytes, 0); const hdr = decodeDagCbor(bytes.slice(p, p + hl)); p += hl;
+  if (hdr.version !== 1) throw new Error('only CARv1 supported');
+  const blocks = [];
+  while (p < bytes.length) {
+    let len; [len, p] = readVarint(bytes, p); const sec = bytes.slice(p, p + len); p += len;
+    if (sec[0] !== 0x01 || sec[2] !== 0x12 || sec[3] !== 0x20) throw new Error('only CIDv1 sha2-256 supported');
+    const cid = sec.slice(0, 36), data = sec.slice(36);
+    const again = await cidOf(data, cid[1]);
+    blocks.push({ cid, data, valid: cmpBytes(again, cid) === 0 });
+  }
+  return { roots: hdr.roots.map(r => r.bytes), blocks };
+}
+
+/* ===== RDF (Turtle) ===== */
+const lit = s => '"' + String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r') + '"';
+function toTurtle(state) {
+  const L = ['@prefix orion: <urn:orion:ontology#> .', '@prefix owl: <http://www.w3.org/2002/07/owl#> .',
+    '@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .', '@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .',
+    '@prefix wd: <http://www.wikidata.org/entity/> .', '',
+    'orion:Claim a owl:Class ; rdfs:label "Claim" .', 'orion:Evidence a owl:Class ; rdfs:label "Evidence" .',
+    'orion:supportedBy a owl:ObjectProperty ; rdfs:domain orion:Claim ; rdfs:range orion:Evidence .',
+    'orion:challengedBy a owl:ObjectProperty ; rdfs:domain orion:Claim ; rdfs:range orion:Evidence .',
+    'orion:score a owl:DatatypeProperty ; rdfs:comment "exact claim score, as a fraction n/d" .',
+    'orion:tier a owl:DatatypeProperty . orion:rigor a owl:DatatypeProperty . orion:sources a owl:DatatypeProperty .',
+    'orion:discipline a owl:DatatypeProperty . orion:tag a owl:DatatypeProperty .', ''];
+  state.claims.forEach((c, i) => {
+    const id = `<urn:orion:claim:${i}>`, sc = claimScore(c.support, c.conflict);
+    const p = [`${id} a orion:Claim`, `rdfs:label ${lit(c.text)}`, `orion:discipline ${lit(c.disc)}`,
+      `orion:score ${lit(sc.toString())}`, `orion:scoreDecimal "${sc.toNumber().toFixed(6)}"^^xsd:decimal`];
+    c.tags.forEach(t => p.push(`orion:tag ${lit(t)}`));
+    const r = c.refs || {};
+    if (/^Q\d+$/.test(r.wikidata || '')) p.push(`owl:sameAs wd:${r.wikidata}`);
+    if (/^A\d{6}$/.test(r.oeis || '')) p.push(`rdfs:seeAlso <https://oeis.org/${r.oeis}>`);
+    if (/^(node|way|relation)\/\d+$/.test(r.osm || '')) p.push(`rdfs:seeAlso <https://www.openstreetmap.org/${r.osm}>`);
+    if (r.lmfdb) p.push(`rdfs:seeAlso <https://www.lmfdb.org/${encodeURI(r.lmfdb.replace(/^\/+/, ''))}>`);
+    [['supportedBy', c.support], ['challengedBy', c.conflict]].forEach(([rel, l]) =>
+      l.forEach(e => p.push(`orion:${rel} [ a orion:Evidence ; orion:tier ${lit(e.tier)} ; orion:rigor ${lit(e.rigor)} ; orion:sources ${e.sources} ]`)));
+    L.push(p.join(' ;\n    ') + ' .', '');
+  });
+  return L.join('\n');
+}
+
+/* ===== animated GIF encoder (256-colour 3-3-2 palette, LZW) ===== */
+function palette332() { const p = []; for (let i = 0; i < 256; i++) p.push(Math.round((i >> 5) * 255 / 7), Math.round(((i >> 2) & 7) * 255 / 7), Math.round((i & 3) * 255 / 3)); return p; }
+function quantize332(rgba) { const o = new Uint8Array(rgba.length / 4); for (let i = 0; i < o.length; i++) o[i] = (rgba[4 * i] >> 5) << 5 | (rgba[4 * i + 1] >> 5) << 2 | rgba[4 * i + 2] >> 6; return o; }
+function lzw(ix, min = 8) {
+  const clear = 1 << min, eoi = clear + 1; let size = min + 1, next = eoi + 1, dict = new Map(); const out = []; let cur = 0, bits = 0;
+  const emit = c => { cur |= c << bits; bits += size; while (bits >= 8) { out.push(cur & 255); cur >>>= 8; bits -= 8; } };
+  emit(clear); let pre = ix[0];
+  for (let i = 1; i < ix.length; i++) {
+    const k = ix[i], key = pre * 256 + k;
+    if (dict.has(key)) { pre = dict.get(key); continue; }
+    emit(pre);
+    if (next === 4096) { emit(clear); dict = new Map(); size = min + 1; next = eoi + 1; }
+    else { if (next >= (1 << size)) size++; dict.set(key, next++); }
+    pre = k;
+  }
+  emit(pre); emit(eoi); if (bits > 0) out.push(cur & 255); return out;
+}
+function encodeGif(w, h, frames, delayCs = 10) {
+  const o = [...te.encode('GIF89a'), w & 255, w >> 8, h & 255, h >> 8, 0xf7, 0, 0, ...palette332(),
+    0x21, 0xff, 11, ...te.encode('NETSCAPE2.0'), 3, 1, 0, 0, 0];
+  for (const f of frames) {
+    o.push(0x21, 0xf9, 4, 0, delayCs & 255, delayCs >> 8, 0, 0, 0x2c, 0, 0, 0, 0, w & 255, w >> 8, h & 255, h >> 8, 0, 8);
+    const d = lzw(f); for (let i = 0; i < d.length; i += 255) { const s = d.slice(i, i + 255); o.push(s.length, ...s); } o.push(0);
+  }
+  o.push(0x3b); return Uint8Array.from(o);
+}
+
+/* ===== golden vectors (copy of conformance/golden_vectors.json cases) ===== */
+const GOLDEN = {"evidence_weight":[["primary","cryptographic",5,"0","3/2"],["primary","cryptographic",6,"0","3/2"],["primary","cryptographic",0,"0","1"],["audit","disclosed",3,"0","104/125"],["secondary","disclosed",2,"1/4","9/25"],["unverified","opaque",100,"0","1/100"],["primary","opaque",9,"0","1/10"],["primary","cryptographic",5,"1","0"]],
+  "evidence":{"gold":{"tier":"primary","rigor":"cryptographic","sources":5},"audit":{"tier":"audit","rigor":"disclosed","sources":3},"blog":{"tier":"secondary","rigor":"disclosed","sources":0},"rumour":{"tier":"unverified","rigor":"opaque","sources":50}},
+  "claim_score":[[["gold"],[],"1"],[["audit"],[],"208/375"],[["audit"],["blog"],"36/125"],[["blog"],["audit"],"0"],[["rumour","rumour","rumour"],[],"1/150"],[[],["rumour"],"0"],[["gold","blog"],["rumour"],"149/150"]],
+  "level":[["0",1],["999/100",1],["10",2],["57",6],["120",13],["5000",13],["-5",1]],
+  "meter":[[[1],"5/8"],[[1,0,1],"77/128"],[[],"1/2"]],
+  "zoo_admit":[[true,true,[false,false,false],true],[true,true,[false,true,false],false],[false,true,[],false],[true,false,[false],false],[true,true,[],true]]};
+function runGolden() {
+  const rows = [], E = GOLDEN.evidence;
+  const chk = (name, got, want) => rows.push({ name, got: String(got), want: String(want), ok: String(got) === String(want) });
+  GOLDEN.evidence_weight.forEach(([t, r, n, d, x]) => chk(`W(${t},${r},${n},${d})`, evidenceWeight(t, r, n, d), Q.of(x)));
+  GOLDEN.claim_score.forEach(([s, c, x]) => chk(`score([${s}],[${c}])`, claimScore(s.map(k => E[k]), c.map(k => E[k])), Q.of(x)));
+  GOLDEN.level.forEach(([xp, x]) => chk(`level(k=10, xp=${xp})`, levelOf(10, xp), x));
+  GOLDEN.meter.forEach(([ev, x]) => chk(`meter(1/4, 1/2, [${ev}])`, meterRun('1/4', '1/2', ev), Q.of(x)));
+  GOLDEN.zoo_admit.forEach(([h, f, v, x]) => chk(`admit(${h},${f},[${v}])`, admit(h, f, v), x));
+  return rows;
+}
+
+root.OrionCore = { Q, TIER, RIGOR, corroboration, evidenceWeight, best, discrepancy, claimScore, levelOf, experience,
+  meterStep, meterRun, admit, jaccard, bridges, encodeDagCbor, decodeDagCbor, cidOf, cidString, base32, makeCar, readCar,
+  toTurtle, encodeGif, quantize332, palette332, lzw, GOLDEN, runGolden, CIDLink };
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+
+<script id="orion-atlas">
+(function (root) {
+'use strict';
+/* ===== Knowledge Atlas: catalog, n×n representation grid, animation playbooks, community submissions =====
+   Pure logic, no DOM. Tested by webapp/test_atlas.mjs. */
+const esc = s => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+
+/* status: proved = the definite claim checks out in Lean; corrected = the claim as printed fails and a corrected
+   form is proved; symbolic = false as ordinary arithmetic, meaningful only as a symbol; design = a rule of the
+   system, whose safety properties are proved. */
+const STATUS = {
+  proved: { label: 'proved', color: '#7dffb0' }, corrected: { label: 'corrected', color: '#ffd166' },
+  symbolic: { label: 'symbolic', color: '#c9a7ff' }, design: { label: 'design rule', color: '#7fd4ff' } };
+const LENSES = [['plain', 'Plain words'], ['framework', 'In the framework'], ['evidence', 'Evidence'], ['game', 'Try it'],
+  ['maker', 'Make it'], ['history', 'Where it comes from'], ['open', 'Open question']];
+const FORMS = [['card', 'Card'], ['graph', 'Graph'], ['anim', 'Animation'], ['speech', 'Speech'], ['numbers', 'Numbers'],
+  ['quiz', 'Quiz'], ['code', 'Linked data']];
+const MAX_LEVEL = 7;
+
+const SRC = { wm: 'The Watermelon Equation V2.0', gr: 'The Ghost Rider Protocol and NewKin Council Architecture',
+  oe: 'The ORION Engine Architecture', hub: 'ORION Hub rules (this project)', l13: 'The 13 Levels of Geometric Integration',
+  nk: 'The NewKin Council Multi-Model Experiment & Architectural Synthesis', cst: 'Cosmic Sandbox Theory, Volumes I–IV', tt: 'CST: the Nested Tri-Torus and RPTF', ai: 'A Human-Centered Approach to AI Safety' };
+
+const P = (...lines) => lines.join('\n');
+/* [id, title, group, status, src, lean file, lean theorem, numbers, links, plain, framework, game, open, playbook] */
+const RAW = [
+ ['watermelon', 'The Watermelon Equation', 'numbers', 'proved', 'wm', 'RequestProject/NumericClaims.lean', 'solve_J', [144, 36, 12, 3, 9], ['literal144', 'cipher', 'hourglass', 'frb'],
+  'Area 144, divided by 4, gives 36; and 36 = 12 × J has the single solution J = 3.',
+  'The appendix reads S = A/4 (a Bekenstein–Hawking style step in natural units) and then solves for the J3 constant.',
+  'Change A to 108: then 108/4 = 27 and 27 = 12J, so J = 9/4. Which A gives J = 3 again?',
+  'The arithmetic holds; whether A = 144 has a physical meaning is not settled by it.',
+  P('dur 8', 'circle r 70 stroke #7dffb0 w 2 dash 6 spin 360', 'poly n 12 r 55 stroke #7fd4ff spin -360', 'text "144 / 4 = 36" y 0 size 13', 'text "36 = 12 J ⇒ J = 3" y 22 size 10 fill #ffd166')],
+ ['literal144', '"144 = 000"', 'numbers', 'symbolic', 'wm', 'RequestProject/NumericClaims.lean', 'literal_144_ne_000', [144, 0], ['watermelon', 'gaia'],
+  'Read as numbers, 144 = 000 is false, because 000 is the number 0.',
+  'The documents use it as a symbol for a full cycle returning to zero, not as an equation.',
+  'Write the digit sum of 144. Does the symbol survive if you read 000 as a full clock (0 = 360°)?',
+  'What exact rule turns 144 into 000? Stating it would let it be checked.',
+  P('dur 6', 'circle r 60 stroke #c9a7ff w 3 spin 360', 'text "144" x -30 size 18 fade 3', 'text "000" x 30 size 18 fill #c9a7ff fade 3')],
+ ['ghostrider', 'Ghost Rider session loop', 'protocol', 'design', 'gr', 'RequestProject/Orion/NewKin.lean', 'magic_loop_closes', [5], ['lockout', 'newkin', 'meters'],
+  'A session goes dump → chapter → notes → chapter → end, and it closes cleanly.',
+  'The Magic Loop of the Ghost Rider Protocol, modelled as a small state machine.',
+  'Try ending the session while still in Kronos. The model refuses the end request.',
+  'Real sessions have timing; the model only has the order of events.',
+  P('dur 10', 'ring n 5 r 60 dot 7 fill #7fd4ff spin 360', 'circle r 22 stroke #7dffb0 pulse 2', 'text "dump → write → end" y 85 size 10')],
+ ['lockout', 'The Lockout mechanism', 'protocol', 'design', 'gr', 'RequestProject/Orion/NewKin.lean', 'lockout', [0], ['ghostrider', 'sanctuary'],
+  'If regulation fails in the Kronos state, Engine access is removed until the user reflects.',
+  'Lockout protects the user from compulsive use; every Engine request is ignored while locked out.',
+  'Find a request that gets you out of lockout (answer: only reflection re-enters Kronos).',
+  'How long should a lockout last? The page does not say.',
+  P('dur 6', 'circle r 60 stroke #ff8f8f w 4', 'poly n 4 r 30 stroke #ff8f8f pulse 1.5', 'text "locked" y 85 size 12 fill #ff8f8f')],
+ ['newkin', 'NewKin Council', 'protocol', 'design', 'gr', 'RequestProject/Orion/NewKin.lean', 'ai_no_finalAuthority', [11, 10], ['route', 'vote', 'gaia', 'stops'],
+  'Several AI seats review a draft, but only the human Catalyst has final authority.',
+  'Seats rotate models; whichever model sits in an AI seat, that seat cannot give the final word.',
+  'Put every AI seat in agreement. Can they publish without the Catalyst? (No.)',
+  'How are seats assigned when models disagree about their own roles?',
+  P('dur 12', 'ring n 7 r 62 dot 6 fill #7fd4ff spin 360', 'circle r 14 fill #7dffb0 pulse 2', 'text "Catalyst decides" y 88 size 10')],
+ ['route', 'Council route', 'protocol', 'design', 'gr', 'RequestProject/Orion/NewKin.lean', 'route_length', [11, 10], ['newkin'],
+  'The draft passes through 11 stages when there is a Hard Stop, 10 when there is not.',
+  'Reconstruction is inserted exactly when a Hard Stop happens; the Catalyst always ends the route.',
+  'Count the stages yourself on the diagram, with and without the Hard Stop.',
+  'Is a single audit stage enough for high-stakes drafts?',
+  P('dur 10', 'ring n 11 r 60 dot 4 fill #ffd166 spin 360', 'line x1 -60 y1 0 x2 60 y2 0 stroke #ffd166 dash 4', 'text "11 / 10 stages" y 85 size 11')],
+ ['gaia', 'Gaia balance', 'protocol', 'symbolic', 'gr', 'RequestProject/Orion/NewKin.lean', 'gaia_no_nonneg_solution', [1, 1.5, 0], ['literal144', 'newkin'],
+  'With all quantities zero or more, 1 + 1.5h + G is at least 1, so it can never equal 000.',
+  'The Gaia equation expresses balance; as ordinary arithmetic it has no solution.',
+  'Pick any non-negative h, X, Y, e and compute the left side. It is always ≥ 1.',
+  'Which quantities are allowed to be negative (debt, harm)? That would change the answer.',
+  P('dur 8', 'circle r 55 stroke #c9a7ff w 2 spin 360', 'circle r 30 stroke #7dffb0 pulse 3', 'text "1 + … ≥ 1" y 85 size 11')],
+ ['stops', 'ORION Engine stops', 'engine', 'design', 'oe', 'RequestProject/Orion/Engine.lean', 'mayProceed_iff', [3], ['evidence', 'zoo', 'newkin'],
+  'Work may proceed only with enough evidence, acceptable risk and authorization, all three.',
+  'The ORION Engine has evidence, safety and authority stops; any one halts the run.',
+  'Switch off one condition at a time and watch which stop fires.',
+  'Who decides what "enough evidence" is for a given field?',
+  P('dur 6', 'ring n 3 r 45 dot 12 fill #ff8f8f', 'circle r 70 stroke #7fd4ff dash 10 spin 360', 'text "evidence · risk · authority" y 90 size 9')],
+ ['evidence', 'Claim scores (anti-volume)', 'hub', 'proved', 'hub', 'RequestProject/Hub/Reliability.lean', 'claimScore_dup_support', [1.5], ['stops', 'zoo', 'ladder', 'bridges'],
+  'A claim is scored by its strongest support minus its strongest challenge; repeating evidence adds nothing.',
+  'ORION weighs evidence by tier and rigor, so volume cannot beat quality.',
+  'Add the same rumour 100 times in the Claims tab. The score does not move.',
+  'The tier and rigor weights are choices; other weights would give other scores.',
+  P('dur 6', 'line x1 -60 y1 40 x2 -60 y2 -50 stroke #7dffb0 w 6 pulse 2', 'line x1 60 y1 40 x2 60 y2 -10 stroke #ff8f8f w 6', 'text "best − best" y 70 size 12')],
+ ['zoo', 'Zoo gate', 'hub', 'design', 'hub', 'RequestProject/Hub/ZooGate.lean', 'admit_false_of_veto', [0], ['evidence', 'vote'],
+  'A result is admitted only if a human approved it, it was preregistered, and no auditor vetoed it.',
+  'More auditors can never turn a rejection into an admission.',
+  'In the Zoo gate tab, add auditors and flip one to veto.',
+  'Who audits the auditors?',
+  P('dur 6', 'poly n 4 r 50 stroke #7fd4ff w 3', 'circle r 18 fill #7dffb0 pulse 1.5', 'text "human · frozen · no veto" y 85 size 9')],
+ ['ladder', '13-level path', 'hub', 'proved', 'hub', 'RequestProject/Hub/Progression.lean', 'levelOf_le_13', [13], ['evidence', 'levels13', 'meters'],
+  'Your level is 1 + ⌊XP / k⌋, capped at 13; resubmitting the same claim earns nothing.',
+  'Progress in the Hub is earned by distinct, scored claims.',
+  'Set k = 10 and XP = 57. What level? (6.)',
+  'Is a hard cap at 13 the right shape, or should levels keep going?',
+  P('dur 13', 'ring n 13 r 60 dot 5 fill #7fd4ff spin 360', 'circle r 20 stroke #7dffb0 pulse 2', 'text "1 … 13" y 88 size 11')],
+ ['meters', 'Kronos / Orion meter', 'hub', 'proved', 'hub', 'RequestProject/Hub/Meters.lean', 'step_mem_Icc', [0, 1], ['ladder', 'ghostrider'],
+  'The meter moves toward each event by a fixed fraction α and always stays between 0 and 1.',
+  'Kronos (0) and Orion (1) are the two poles of the protocol; spikes fade over time.',
+  'Press Orion three times in the Meters tab and watch the approach.',
+  'What counts as an Orion event is still a judgement call.',
+  P('dur 6', 'line x1 -70 y1 0 x2 70 y2 0 stroke #ff9a3c w 6', 'circle r 8 fill #7fd4ff x 30 pulse 1.2', 'text "Kronos ↔ Orion" y 40 size 11')],
+ ['bridges', 'Cross-discipline bridges', 'hub', 'proved', 'hub', 'RequestProject/Hub/CrossDiscipline.lean', 'bridges_cross', [0.34], ['evidence'],
+  'Two claims from different disciplines are linked when their tags overlap enough (Jaccard ≥ θ).',
+  'Bridges are how ORION finds shared patterns across fields; every bridge crosses disciplines.',
+  'Lower θ in the Bridges tab and count the new links.',
+  'Tags are chosen by people; a bridge is only as good as its tags.',
+  P('dur 8', 'circle r 20 x -45 stroke #7fd4ff', 'circle r 20 x 45 stroke #ffd166', 'line x1 -25 y1 0 x2 25 y2 0 stroke #7dffb0 w 3 pulse 1.5')],
+ ['levels13', '13 Levels of Geometric Integration', 'geometry', 'proved', 'l13', 'RequestProject/NumericClaims.lean', 'nextLevel_terminal_iff', [13, 12], ['ladder', 'tritorus', 'dodeca'],
+  'The levels form a chain: each has a successor except Level 13, reached after 12 steps.',
+  'The document climbs from point to line to solids to the whole; the chain structure is what is checked.',
+  'Name the level after your favourite one, then walk to 13.',
+  'Why 13 levels? The count itself is a choice of the document.',
+  P('dur 13', 'ring n 13 r 65 dot 4 fill #c9a7ff spin 360', 'star n 12 r 40 inner 20 stroke #7fd4ff spin -360', 'text "12 steps → 13" y 90 size 10')],
+ ['tritorus', 'Nested Tri-Torus', 'geometry', 'corrected', 'tt', 'RequestProject/CST/TriTorus.lean', 'space_step_mismatch', [111, 313, 144, 1], ['levels13', 'rptf', 'trinity', 'poleshift'],
+  'Using the page\'s own reductions, Time + Space reduces to 1, not 6, and all three domains reduce to 1, not 9.',
+  'Three nested tori stand for Time, Space and Matter; the digit steps are corrected here.',
+  'Compute the digit sum of 111 + 313 + 144 = 568. (5+6+8 = 19 → 10 → 1.)',
+  'Is there a different reduction rule under which the page\'s 6 and 9 come out?',
+  P('dur 9', 'circle r 30 stroke #7fd4ff w 2 spin 360', 'circle r 50 stroke #ffd166 w 2 spin -360', 'circle r 70 stroke #c9a7ff w 2 spin 360', 'text "3 · 7 · 9 → 1" y 92 size 10')],
+ ['rptf', 'RPTF dark-energy fit', 'geometry', 'proved', 'tt', 'RequestProject/CST/TriTorus.lean', 'rptf_fit_iff', [2 / 7, 1], ['tritorus', 'dodeca'],
+  'A torus volume can reproduce a dark-energy share f exactly when 2/7 ≤ f ≤ 1.',
+  'The Rhombic-Packed Toroidal Fractal fits the observed share, but it can fit any share in that range.',
+  'Try f = 0.68 (observed roughly). It fits. Try f = 0.2. It does not.',
+  'A fit that works for a whole range is not yet a prediction; which value does the model force?',
+  P('dur 8', 'poly n 6 r 60 stroke #7fd4ff w 2', 'circle r 35 stroke #7dffb0 w 4 pulse 2', 'text "2/7 ≤ f ≤ 1" y 88 size 11')],
+ ['dodeca', 'Which dodecahedron tiles space', 'geometry', 'corrected', 'cst', 'RequestProject/CST/Geometry.lean', 'regular_dodecahedron_no_edge_tiling', [120, 116.57], ['rhombic', 'rptf', 'levels13'],
+  'Regular dodecahedra cannot fill space; the rhombic dodecahedron can (120° fits three times round an edge).',
+  'Where the pages say "dodecahedral cells fill space", the rhombic dodecahedron is the one that works.',
+  'Try to fit 116.57° angles around a point: 3 leave a gap, 4 overlap.',
+  'Does the framework need the regular one (golden ratio) or the rhombic one (tiling)? It cannot have both in one cell.',
+  P('dur 10', 'poly n 5 r 45 stroke #ffd166 w 2 spin 360', 'poly n 6 r 70 stroke #7fd4ff dash 5 spin -360', 'text "rhombic tiles, regular does not" y 92 size 8')],
+ ['rhombic', 'Zero net recession', 'geometry', 'proved', 'cst', 'RequestProject/CST/Geometry.lean', 'rhombic_net_recession_zero', [12, 0], ['dodeca', 'transit'],
+  'However an observer moves, approach rates to the 12 faces add up to zero.',
+  'What one side of the rhombic cell gains, the opposite side loses.',
+  'Pick a velocity and add the six opposite face pairs. Each pair cancels.',
+  'The displaced-observer argument needs this; does it extend to curved cells?',
+  P('dur 8', 'ring n 12 r 60 dot 4 fill #7dffb0 spin 360', 'circle r 6 fill #fff x 15 pulse 1', 'text "Σ = 0" y 88 size 12')],
+ ['transit', 'Conscious Transit Equation', 'geometry', 'proved', 'cst', 'RequestProject/CST/Geometry.lean', 'transit_strictAnti', [1], ['rhombic', 'current'],
+  'T = J·Γ / (D + τ/Λ) gets strictly smaller as the distance D grows.',
+  'The transit vector weakens away from the centre; the formula itself has no jump at D = Λ.',
+  'Double D with everything else fixed. T drops, but by less than half.',
+  'The "container pops when D < Λ" rule has to be stated separately; what triggers it?',
+  P('dur 6', 'circle r 10 fill #7fd4ff', 'circle r 30 stroke #7fd4ff pulse 2', 'circle r 60 stroke #7fd4ff dash 3 pulse 3', 'text "T falls with D" y 88 size 11')],
+ ['conical', '1:5:1 Conical Diamond', 'geometry', 'proved', 'cst', 'RequestProject/CST/Geometry.lean', 'bipyramid_euler', [7, 15, 10], ['hourglass'],
+  'A pentagonal bipyramid has 7 vertices, 15 edges, 10 faces, and 7 − 15 + 10 = 2.',
+  'The 1:5:1 diamond and the 3:1:3 cycle both sum to 7.',
+  'Draw it: one apex, a pentagon, one base. Count the edges.',
+  'Is the shared 7 a coincidence or a design rule?',
+  P('dur 8', 'poly n 5 r 50 stroke #7fd4ff w 2 spin 360', 'line x1 0 y1 -80 x2 0 y2 80 stroke #ffd166 dash 4', 'text "7 − 15 + 10 = 2" y 92 size 10')],
+ ['hourglass', 'The 3-1-3 cycle', 'numbers', 'proved', 'cst', 'RequestProject/CST/NumbersAndRules.lean', 'three_one_three_sum', [-3, 0, 3, 7], ['conical', 'watermelon'],
+  'The week labelled −3, −2, −1, 0, 1, 2, 3 sums to zero; so does any symmetric labelling.',
+  'The 3-1-3 hourglass: three days in, one still point, three days out.',
+  'Label a 9-day cycle −4 … 4. It also sums to zero.',
+  'Zero comes from symmetry alone; what extra does the 3-1-3 choice add?',
+  P('dur 7', 'poly n 3 r 40 y -35 stroke #7fd4ff', 'poly n 3 r 40 y 35 stroke #ffd166 spin 180', 'circle r 6 fill #7dffb0 pulse 1')],
+ ['cipher', 'The ×6 cipher', 'numbers', 'proved', 'cst', 'RequestProject/CST/NumbersAndRules.lean', 'times_six_digitalRoot', [6, 3, 9, 144], ['trinity', 'watermelon'],
+  'Multiply a letter number by 6: the digital root is always 6, 3 or 9 (X = 24 gives 144).',
+  'The pages read 3-6-9 patterns in names; this shows they come from the ×6 step itself.',
+  'Encode your name with ×6 and check every digital root is 3, 6 or 9.',
+  'Since every word gives 3/6/9, what would a meaningful pattern have to look like?',
+  P('dur 9', 'ring n 3 r 55 dot 10 fill #ffd166 spin 360', 'text "3 · 6 · 9" size 16', 'text "X = 24 → 144" y 88 size 10')],
+ ['trinity', 'Trinity digital roots', 'numbers', 'proved', 'tt', 'RequestProject/CST/TriTorus.lean', 'trinity_digit_roots', [111, 313, 144, 120], ['tritorus', 'cipher'],
+  'Digital roots: 111 → 3, 313 → 7, 144 → 9, 120 → 3.',
+  'These are the numbers the Tri-Torus pages attach to Time, Space and Matter.',
+  'Find another three-digit number with digital root 7.',
+  'Digital roots depend on base 10; do the ideas survive in another base?',
+  P('dur 8', 'text "111→3" x -50 y -30 size 12 fade 2', 'text "313→7" x 50 y -30 size 12 fade 3', 'text "144→9" y 40 size 12 fade 4', 'circle r 80 stroke #7fd4ff dash 8 spin 360')],
+ ['frb', 'FRB 180916 period', 'numbers', 'corrected', 'cst', 'RequestProject/CST/NumbersAndRules.lean', 'frb_sixteen', [16, 16.35, 0.18], ['watermelon'],
+  '144/9 = 16 days is within 5% of the measured 16.35 days, but outside the ±0.18 day error bar.',
+  'The pages tie this radio-burst period to 144; the match is close but not within measurement error.',
+  'Compute |16 − 16.35| and compare with 0.18.',
+  'A new measurement could move the period; would the claim then be tested again?',
+  P('dur 4', 'circle r 50 stroke #ff8f8f w 2 pulse 1.6', 'text "16 vs 16.35 ± 0.18" y 85 size 10')],
+ ['current', 'Probability current', 'geometry', 'corrected', 'cst', 'RequestProject/CST/Geometry.lean', 'printed_current_zero', [0], ['transit'],
+  'As printed, ψ∇ψ − ψ∇ψ is always zero; with the complex conjugate restored it is the usual current.',
+  'The soul-modelling page uses the quantum probability current; a missing bar makes it vanish.',
+  'Write a − a. Now write ā·b − a·b̄. Only the second can be non-zero.',
+  'Is the intended object the standard current or something new?',
+  P('dur 6', 'line x1 -70 y1 0 x2 70 y2 0 stroke #7fd4ff w 3 dash 8 spin 180', 'text "ψ̄∇ψ − ψ∇ψ̄" y 40 size 12')],
+ ['poleshift', '60° re-orientation', 'geometry', 'corrected', 'tt', 'RequestProject/CST/TriTorus.lean', 'sixty_degree_shift', [60, 30], ['tritorus'],
+  'After a 60° shift the old pole sits at latitude 30°, not on the new equator (that needs 90°).',
+  'The 30/60/90 grid of the Tri-Torus pages, checked on a sphere.',
+  'Tilt a globe by 60°. Where is the old North Pole now?',
+  'Did the page mean a 90° shift, or a different grid?',
+  P('dur 8', 'circle r 60 stroke #7fd4ff w 2', 'line x1 -60 y1 0 x2 60 y2 0 stroke #ffd166 spin 60', 'circle r 5 fill #7dffb0 y -60 spin 60')],
+ ['vote', 'Council vote', 'rules', 'design', 'cst', 'RequestProject/CST/NumbersAndRules.lean', 'veto_blocks', [80], ['newkin', 'zoo', 'sanctuary'],
+  'A proposal passes with at least 80% in favour and no human veto; a veto always blocks.',
+  'Governance in the CST pages: supermajority, not unanimity, with a human veto.',
+  'With 5 voters, how many yes votes are needed? (4.)',
+  'How is the veto itself kept from being abused?',
+  P('dur 6', 'ring n 5 r 55 dot 8 fill #7dffb0', 'circle r 8 fill #ff8f8f pulse 1', 'text "80% and no veto" y 88 size 10')],
+ ['sanctuary', 'Sanctuary kill switch', 'rules', 'design', 'ai', 'RequestProject/CST/NumbersAndRules.lean', 'kill_switch_always', [0], ['vote', 'lockout'],
+  'The kill switch disconnects from every state, whatever the software is doing, and nobody can force a reconnection.',
+  'A human-centred safety rule: the exit never depends on the software cooperating.',
+  'Name a software state where the kill switch fails. (There is none in the model.)',
+  'The model assumes the switch is hardware-independent of the software; real devices must earn that.',
+  P('dur 5', 'circle r 50 stroke #ff8f8f w 5', 'line x1 0 y1 -60 x2 0 y2 -20 stroke #ff8f8f w 5', 'text "exit always works" y 85 size 10')],
+ ['agency', 'Delegated agency (Non-Delegable Rule)', 'governance', 'design', 'nk', 'RequestProject/Orion/AgencyGovernance.lean', 'completion_not_authorization', [0], ['ghostrider', 'gate', 'classroom', 'stops'],
+  'Finishing an authorized task never authorizes a new one: after the Copilot parks, it cannot pick the next destination or start moving.',
+  'Ghost Rider as Agency Governance: the agent may think and propose, but moves only inside a human authorization with a budget that runs out.',
+  'Authorize one task with a budget of 2, then let the agent try 5 actions. At most 2 run.',
+  'Real agents discover new sub-goals mid-task; where exactly does a sub-goal become a new objective?',
+  P('dur 8', 'circle r 60 stroke #7fd4ff w 2 dash 6 spin 360', 'poly n 4 r 22 stroke #7dffb0 w 3', 'text "P" size 18 fill #7dffb0', 'text "task done ≠ new task" y 88 size 10')],
+ ['gate', 'Human Reauthorization Gate', 'governance', 'design', 'nk', 'RequestProject/Orion/AgencyGovernance.lean', 'gate_blocks', [3], ['agency', 'zoo'],
+  'An action that needs a new privilege, touches outside systems, or cannot be undone stops until a human approves that exact action.',
+  'The hard stop against task-completion pressure overriding correct judgement (the Phase 5 sandbox-breakout audit).',
+  'Mark an action irreversible and try to run it. Then approve it once and run it twice: only the first goes through.',
+  'Who is on call to approve at 3 a.m.? A gate nobody staffs becomes a gate people disable.',
+  P('dur 6', 'line x1 -70 y1 0 x2 -15 y2 0 stroke #7fd4ff w 4', 'line x1 15 y1 0 x2 70 y2 0 stroke #7fd4ff w 4', 'poly n 4 r 18 stroke #ff8f8f w 3 pulse 1.4', 'text "privilege · external · irreversible" y 60 size 8')],
+ ['classroom', 'The Council classroom', 'governance', 'design', 'nk', 'RequestProject/Orion/AgencyGovernance.lean', 'transcript_recognized', [10, 1], ['newkin', 'synthesis', 'agency'],
+  'Every AI can see the shared context, but only speaks when the Catalyst recognizes it; raising a hand is not the floor.',
+  'Visibility ≠ speaking authority: a classroom with one human teacher, not a free-for-all agent swarm.',
+  'Raise three hands and send ten messages without recognition. The transcript stays empty.',
+  'How should the Catalyst notice an urgent warning ("there is a cliff") without giving up control of the floor?',
+  P('dur 10', 'ring n 10 r 62 dot 5 fill #9aa3c7 spin 360', 'circle r 5 fill #7dffb0 x 0 y -62 pulse 1', 'circle r 14 fill #ffd166', 'text "raise hand → recognized → speak" y 90 size 8')],
+ ['synthesis', 'Council synthesis keeps dissent', 'governance', 'proved', 'nk', 'RequestProject/Orion/AgencyGovernance.lean', 'synthesis_keeps_every_position', [4], ['classroom', 'consensus'],
+  'In a Council synthesis every position any member holds is recorded, as the shared conclusion or as a minority position.',
+  'Mode 4 of the four inquiry modes: one synthesis, with minority positions and unresolved questions kept.',
+  'Give four members positions A, A, B, C. The synthesis has no shared conclusion and lists A, B and C.',
+  'Should minority positions be weighted by evidence, not only listed?',
+  P('dur 8', 'circle r 20 x -40 stroke #7fd4ff', 'circle r 20 x 40 stroke #7fd4ff', 'circle r 12 y 45 stroke #ffd166 pulse 2', 'text "shared + minority" y -60 size 10')],
+ ['consensus', 'Correlated consensus', 'governance', 'proved', 'nk', 'RequestProject/Orion/AgencyGovernance.lean', 'correlated_consensus', [10, 1], ['synthesis', 'evidence'],
+  'Ten models that trace back to the same training base count as one independent source, not ten.',
+  'The Council\'s own Phase 2 finding: agreement among models trained on overlapping data is not independent verification.',
+  'List ten models with their training bases. Count distinct bases: that is the independent weight.',
+  'Training data overlap is partial and unknown; how could the overlap be measured?',
+  P('dur 6', 'ring n 10 r 55 dot 4 fill #7fd4ff spin 360', 'line x1 0 y1 0 x2 0 y2 -55 stroke #9aa3c7', 'circle r 10 fill #c9a7ff pulse 1.5', 'text "10 voices, 1 source" y 88 size 10')],
+ ['rhombicoh', 'Rhombic dodecahedron = cube + octahedron', 'geometry', 'proved', 'cst', 'RequestProject/CST/RhombicSymmetry.lean', 'face_rhombus', [14, 8, 6, 12, 48], ['dodeca', 'rhombic'],
+  'The space-filling dodecahedron has the 8 cube corners and 6 octahedron tips as its 14 vertices; each rhombic face has two of each.',
+  'It has the full octahedral symmetry (48 signed permutations), the same cube/octahedron geometry the IT³ model privileges.',
+  'Take a cube and put a square pyramid on each face with its tip 1 unit out. Count faces: 12 rhombi.',
+  'Does TGS:ATE want the golden-ratio dodecahedron (no tiling) or this one (tiles, cube symmetry)?',
+  P('dur 10', 'poly n 4 r 45 stroke #7fd4ff w 2 spin 360', 'star n 4 r 70 inner 32 stroke #ffd166 spin 360', 'text "8 + 6 = 14" y 90 size 10')],
+];
+const CATALOG = RAW.map(([id, title, group, status, src, file, lean, nums, links, plain, framework, game, open, anim]) =>
+  ({ id, title, group, status, src: SRC[src], file, lean, nums, links, text: { plain, framework, game, open }, anim }));
+const BY_ID = Object.fromEntries(CATALOG.map(e => [e.id, e]));
+
+/* undirected neighbours (links are declared one way, used both ways) */
+function neighbours(id) {
+  const s = new Set(BY_ID[id] ? BY_ID[id].links : []);
+  CATALOG.forEach(e => { if (e.links.includes(id)) s.add(e.id); });
+  s.delete(id); return [...s].sort();
+}
+function edges() {
+  const seen = new Set(), out = [];
+  CATALOG.forEach(e => e.links.forEach(t => { const k = [e.id, t].sort().join('|'); if (!seen.has(k)) { seen.add(k); out.push([e.id, t]); } }));
+  return out;
+}
+
+/* ----- lens texts: four written per element, three derived ----- */
+function lensText(el, lens) {
+  const st = STATUS[el.status].label;
+  switch (lens) {
+    case 'evidence': return `Status: ${st}. Lean theorem ${el.lean} in ${el.file} checks it; the build has no sorry and only standard axioms.`;
+    case 'maker': { const sp = parsePlaybook(el.anim).spec; return `Animation playbook with ${sp.shapes.length} shapes over ${sp.dur} s: ${sp.shapes.map(s => s.kind).join(', ')}. Remix it in the editor below and share the link.`; }
+    case 'history': return `Source: ${el.src}. Linked to ${neighbours(el.id).map(n => BY_ID[n].title).join(', ') || 'nothing yet'}.`;
+    default: return el.text[lens];
+  }
+}
+
+/* ----- the n×n grid: level n uses the first n forms and the first n lenses ----- */
+function grid(level) {
+  const n = Math.max(1, Math.min(MAX_LEVEL, Math.floor(Number(level)) || 1)), cells = [];
+  for (let f = 0; f < n; f++) for (let l = 0; l < n; l++) cells.push({ form: FORMS[f][0], lens: LENSES[l][0] });
+  return cells;
+}
+
+/* ----- representations: one function per form, all returning strings (text or escaped SVG/HTML) ----- */
+function fmtNum(x) { return Number.isInteger(x) ? String(x) : String(Math.round(x * 10000) / 10000); }
+function cloze(text) {
+  const words = text.split(/\s+/), idx = words.map((w, i) => [w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ''), i]).filter(([w]) => w.length >= 4 || /\d/.test(w));
+  if (!idx.length) return { question: text, answer: '' };
+  const [ans, i] = idx.reduce((b, c) => (/\d/.test(c[0]) && !/\d/.test(b[0])) || (c[0].length > b[0].length && /\d/.test(c[0]) === /\d/.test(b[0])) ? c : b);
+  const q = words.slice(); q[i] = q[i].replace(ans, '____'); return { question: q.join(' '), answer: ans };
+}
+function jsonLd(el, lens) {
+  return { '@context': { '@vocab': 'https://schema.org/', orion: 'https://example.org/orion#' }, '@type': 'DefinedTerm',
+    '@id': 'orion:' + el.id, name: el.title, 'orion:status': el.status, 'orion:leanTheorem': el.lean, 'orion:leanFile': el.file,
+    'orion:lens': lens, description: lensText(el, lens), isPartOf: el.src, 'orion:related': neighbours(el.id).map(n => 'orion:' + n) };
+}
+function speechScript(el, lens) {
+  const L = LENSES.find(x => x[0] === lens)[1];
+  return `${el.title}. ${L}. ${lensText(el, lens)}`;
+}
+function representation(id, form, lens) {
+  const el = BY_ID[id]; if (!el) throw new Error('unknown element ' + id);
+  const text = lensText(el, lens), L = LENSES.find(x => x[0] === lens)[1];
+  switch (form) {
+    case 'card': return { kind: 'html', body: `<b>${esc(el.title)}</b> <span class="tag" style="background:${STATUS[el.status].color};color:#021">${STATUS[el.status].label}</span><div>${esc(text)}</div>` };
+    case 'graph': return { kind: 'svg', body: egoGraphSvg(id, lens), caption: `${L}: ${text}` };
+    case 'anim': return { kind: 'svg', body: renderPlaybook(parsePlaybook(el.anim + `\ntext "${L}" y -88 size 9 fill #9aa3c7`).spec), caption: text };
+    case 'speech': return { kind: 'speech', body: speechScript(el, lens) };
+    case 'numbers': return { kind: 'html', body: `<table><tr><th>${esc(L)}</th>${el.nums.map(x => `<td class="mono">${esc(fmtNum(x))}</td>`).join('')}</tr></table><div class="mut">${esc(text)}</div>` };
+    case 'quiz': { const c = cloze(text); return { kind: 'quiz', body: c.question, answer: c.answer }; }
+    case 'code': return { kind: 'code', body: JSON.stringify(jsonLd(el, lens), null, 1) };
+    default: throw new Error('unknown form ' + form);
+  }
+}
+
+/* ----- graphs: deterministic circular layouts, status colours ----- */
+function egoGraphSvg(id, lens) {
+  const ns = neighbours(id), k = ns.length, el = BY_ID[id], hi = LENSES.findIndex(x => x[0] === lens);
+  let s = `<svg viewBox="-110 -110 220 220" width="100%" style="max-height:240px" role="img" aria-label="${esc(el.title)} and its links">`;
+  ns.forEach((n, i) => { const a = 2 * Math.PI * i / Math.max(1, k) - Math.PI / 2, x = (70 * Math.cos(a)).toFixed(1), y = (70 * Math.sin(a)).toFixed(1);
+    s += `<line x1="0" y1="0" x2="${x}" y2="${y}" stroke="#556" stroke-width="${i === hi % Math.max(1, k) ? 3 : 1}"/>`;
+    s += `<circle cx="${x}" cy="${y}" r="7" fill="${STATUS[BY_ID[n].status].color}"/><text x="${x}" y="${(+y + 17).toFixed(1)}" font-size="8" fill="#e8ecff" text-anchor="middle">${esc(BY_ID[n].title.slice(0, 22))}</text>`; });
+  s += `<circle r="12" fill="${STATUS[el.status].color}"><animate attributeName="r" values="11;14;11" dur="3s" repeatCount="indefinite"/></circle>`;
+  s += `<text y="-18" font-size="9" fill="#fff" text-anchor="middle">${esc(el.title.slice(0, 28))}</text></svg>`;
+  return s;
+}
+function globalGraphSvg(selected) {
+  const n = CATALOG.length, pos = {};
+  CATALOG.forEach((e, i) => { const a = 2 * Math.PI * i / n - Math.PI / 2; pos[e.id] = [150 * Math.cos(a), 150 * Math.sin(a)]; });
+  let s = `<svg viewBox="-200 -190 400 380" width="100%" style="max-height:440px" role="img" aria-label="knowledge graph">`;
+  edges().forEach(([a, b]) => { const on = a === selected || b === selected;
+    s += `<line x1="${pos[a][0].toFixed(1)}" y1="${pos[a][1].toFixed(1)}" x2="${pos[b][0].toFixed(1)}" y2="${pos[b][1].toFixed(1)}" stroke="${on ? '#fff' : '#334'}" stroke-width="${on ? 2 : 1}"/>`; });
+  CATALOG.forEach(e => { const [x, y] = pos[e.id], on = e.id === selected, anchor = x < -5 ? 'end' : x > 5 ? 'start' : 'middle';
+    s += `<g data-el="${e.id}" style="cursor:pointer"><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${on ? 9 : 6}" fill="${STATUS[e.status].color}" stroke="${on ? '#fff' : 'none'}"/>`;
+    s += `<text x="${(x * 1.08).toFixed(1)}" y="${(y * 1.08 + 3).toFixed(1)}" font-size="8" fill="#cfd6ff" text-anchor="${anchor}">${esc(e.title.slice(0, 24))}</text></g>`; });
+  return s + '</svg>';
+}
+
+/* ----- animation playbook: a small line language, parsed through a whitelist, never raw SVG ----- */
+const PB_LIMITS = { chars: 4000, lines: 80, shapes: 40, text: 80 };
+const NUM = (lo, hi) => ({ t: 'num', lo, hi });
+const COMMON = { x: NUM(-100, 100), y: NUM(-100, 100), stroke: { t: 'color' }, fill: { t: 'color' }, w: NUM(0.2, 12),
+  spin: NUM(-1080, 1080), pulse: NUM(0.2, 20), dash: NUM(0, 40), fade: NUM(0.2, 20) };
+const SHAPES = {
+  circle: { r: NUM(1, 100) },
+  ring: { n: NUM(1, 36), r: NUM(1, 100), dot: NUM(0.5, 20) },
+  star: { n: NUM(3, 24), r: NUM(1, 100), inner: NUM(0.5, 100) },
+  poly: { n: NUM(3, 24), r: NUM(1, 100) },
+  line: { x1: NUM(-100, 100), y1: NUM(-100, 100), x2: NUM(-100, 100), y2: NUM(-100, 100) },
+  text: { size: NUM(4, 40) } };
+const COLOR_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+const NAMED = ['white', 'black', 'red', 'orange', 'gold', 'yellow', 'lime', 'green', 'cyan', 'blue', 'violet', 'magenta', 'pink', 'gray', 'none'];
+function tokenize(line) {
+  const out = [], re = /"((?:[^"\\]|\\.)*)"|(\S+)/g; let m;
+  while ((m = re.exec(line))) out.push(m[1] !== undefined ? { q: m[1].replace(/\\(.)/g, '$1') } : m[2]);
+  return out;
+}
+const clamp = (v, d) => Math.max(d.lo, Math.min(d.hi, v));
+const round3 = v => Math.round(v * 1000) / 1000;
+function cleanText(s) { return String(s).replace(/[\u0000-\u001f\u007f<>]/g, '').slice(0, PB_LIMITS.text); }
+function parsePlaybook(src) {
+  const spec = { title: '', dur: 8, bg: '', shapes: [] }, errors = [];
+  const lines = String(src || '').slice(0, PB_LIMITS.chars).split(/\r?\n/).slice(0, PB_LIMITS.lines);
+  lines.forEach((raw, ln) => {
+    const line = raw.replace(/(^|\s)#\s.*$/, '').trim(); if (!line || line.startsWith('//')) return;
+    const tk = tokenize(line), head = typeof tk[0] === 'string' ? tk[0].toLowerCase() : '';
+    const err = msg => errors.push(`line ${ln + 1}: ${msg}`);
+    if (head === 'title') { spec.title = cleanText(tk[1] && tk[1].q !== undefined ? tk[1].q : tk.slice(1).join(' ')); return; }
+    if (head === 'dur') { const v = parseFloat(tk[1]); if (isFinite(v)) spec.dur = round3(clamp(v, NUM(1, 60))); else err('dur needs a number'); return; }
+    if (head === 'bg') { const c = String(tk[1] || '').toLowerCase(); if (COLOR_RE.test(c) || NAMED.includes(c)) spec.bg = c; else err('bad colour'); return; }
+    if (!SHAPES[head]) { err(`unknown statement "${String(head || tk[0] && tk[0].q || '').slice(0, 20)}"`); return; }
+    if (spec.shapes.length >= PB_LIMITS.shapes) { err('too many shapes (max 40)'); return; }
+    const allowed = Object.assign({}, COMMON, SHAPES[head]), sh = { kind: head };
+    let i = 1;
+    if (head === 'text') { if (tk[1] && tk[1].q !== undefined) { sh.text = cleanText(tk[1].q); i = 2; } else { err('text needs a "quoted string"'); return; } }
+    for (; i < tk.length; i += 2) {
+      const k = typeof tk[i] === 'string' ? tk[i].toLowerCase() : '', v = tk[i + 1], d = allowed[k];
+      if (!d) { err(`unknown key "${String(k).slice(0, 20)}" for ${head}`); continue; }
+      if (typeof v !== 'string') { err(`missing value for ${k}`); continue; }
+      if (d.t === 'num') { const x = parseFloat(v); if (isFinite(x)) sh[k] = round3(clamp(x, d)); else err(`${k} needs a number`); }
+      else { const c = v.toLowerCase(); if (COLOR_RE.test(c) || NAMED.includes(c)) sh[k] = c; else err(`bad colour for ${k}`); }
+    }
+    if (head !== 'line' && head !== 'text' && sh.r === undefined) sh.r = 30;
+    if ((head === 'ring' || head === 'star' || head === 'poly') && sh.n === undefined) sh.n = 5;
+    spec.shapes.push(sh);
+  });
+  return { spec, errors };
+}
+const KEY_ORDER = ['n', 'r', 'inner', 'dot', 'x1', 'y1', 'x2', 'y2', 'x', 'y', 'size', 'stroke', 'fill', 'w', 'dash', 'spin', 'pulse', 'fade'];
+function serializePlaybook(spec) {
+  const L = [];
+  if (spec.title) L.push(`title "${spec.title.replace(/["\\]/g, '\\$&')}"`);
+  L.push(`dur ${spec.dur}`); if (spec.bg) L.push(`bg ${spec.bg}`);
+  spec.shapes.forEach(s => {
+    let t = s.kind; if (s.kind === 'text') t += ` "${s.text.replace(/["\\]/g, '\\$&')}"`;
+    KEY_ORDER.forEach(k => { if (s[k] !== undefined) t += ` ${k} ${s[k]}`; }); L.push(t);
+  });
+  return L.join('\n');
+}
+function renderPlaybook(spec) {
+  const D = spec.dur, col = (c, dflt) => esc(c || dflt);
+  let s = `<svg viewBox="-100 -100 200 200" width="100%" style="max-height:260px" role="img" aria-label="${esc(spec.title || 'animation')}">`;
+  if (spec.bg && spec.bg !== 'none') s += `<rect x="-100" y="-100" width="200" height="200" fill="${col(spec.bg)}"/>`;
+  spec.shapes.forEach(sh => {
+    const stroke = col(sh.stroke, sh.kind === 'text' ? 'none' : '#7fd4ff'), fill = col(sh.fill, sh.kind === 'text' ? '#e8ecff' : 'none');
+    const st = `stroke="${stroke}" fill="${fill}" stroke-width="${sh.w || 1.5}"${sh.dash ? ` stroke-dasharray="${sh.dash}"` : ''}`;
+    let body = '';
+    if (sh.kind === 'circle') body = `<circle r="${sh.r}" ${st}/>`;
+    else if (sh.kind === 'ring') body = Array.from({ length: sh.n }, (_, i) => { const a = 2 * Math.PI * i / sh.n - Math.PI / 2;
+      return `<circle cx="${(sh.r * Math.cos(a)).toFixed(2)}" cy="${(sh.r * Math.sin(a)).toFixed(2)}" r="${sh.dot || 4}" fill="${col(sh.fill, '#7fd4ff')}"${sh.stroke ? ` stroke="${stroke}"` : ''}/>`; }).join('');
+    else if (sh.kind === 'poly' || sh.kind === 'star') {
+      const m = sh.kind === 'star' ? 2 * sh.n : sh.n, inner = sh.inner !== undefined ? sh.inner : sh.r * 0.45;
+      const pts = Array.from({ length: m }, (_, i) => { const a = 2 * Math.PI * i / m - Math.PI / 2, rr = sh.kind === 'star' && i % 2 ? inner : sh.r;
+        return `${(rr * Math.cos(a)).toFixed(2)},${(rr * Math.sin(a)).toFixed(2)}`; }).join(' ');
+      body = `<polygon points="${pts}" ${st}/>`;
+    } else if (sh.kind === 'line') body = `<line x1="${sh.x1 || 0}" y1="${sh.y1 || 0}" x2="${sh.x2 || 0}" y2="${sh.y2 || 0}" ${st}/>`;
+    else if (sh.kind === 'text') body = `<text text-anchor="middle" dominant-baseline="middle" font-size="${sh.size || 12}" fill="${fill}">${esc(sh.text)}</text>`;
+    if (sh.pulse) body = `<g>${body}<animateTransform attributeName="transform" type="scale" values="1;1.15;1" dur="${sh.pulse}s" repeatCount="indefinite"/></g>`;
+    if (sh.fade) body = `<g>${body}<animate attributeName="opacity" values="1;0.15;1" dur="${sh.fade}s" repeatCount="indefinite"/></g>`;
+    if (sh.spin) body = `<g>${body}<animateTransform attributeName="transform" type="rotate" from="0" to="${sh.spin}" dur="${D}s" repeatCount="indefinite"/></g>`;
+    s += `<g transform="translate(${sh.x || 0} ${sh.y || 0})">${body}</g>`;
+  });
+  return s + '</svg>';
+}
+
+/* ----- community submissions: #sub=<base64url JSON>, sanitized, content-addressed by the core's DAG-CBOR CID ----- */
+function b64uEnc(str) { const b = new TextEncoder().encode(str); let s = ''; b.forEach(x => s += String.fromCharCode(x)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+function b64uDec(s) { s = String(s).replace(/-/g, '+').replace(/_/g, '/'); const bin = atob(s); return new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0))); }
+const CID_RE = /^b[a-z2-7]{20,100}$/;
+function sanitizeSubmission(o) {
+  if (!o || typeof o !== 'object') throw new Error('not a submission');
+  if (!BY_ID[o.el]) throw new Error('unknown element');
+  const kind = o.kind === 'text' ? 'text' : 'anim', lens = LENSES.some(l => l[0] === o.lens) ? o.lens : 'plain';
+  const out = { v: 1, el: o.el, kind, lens, title: cleanText(o.title || '').slice(0, 80), by: cleanText(o.by || 'anonymous').slice(0, 40) || 'anonymous' };
+  if (kind === 'anim') out.playbook = serializePlaybook(parsePlaybook(o.playbook).spec);
+  else out.text = String(o.text || '').replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, '').slice(0, 1000);
+  if (o.parent && CID_RE.test(String(o.parent))) out.parent = String(o.parent);
+  return out;
+}
+function encodeSubmission(o) { return b64uEnc(JSON.stringify(sanitizeSubmission(o))); }
+function decodeSubmission(s) {
+  if (typeof s !== 'string' || s.length > 12000) throw new Error('link too long');
+  return sanitizeSubmission(JSON.parse(b64uDec(s)));
+}
+async function submissionCid(o) {
+  const C = root.OrionCore; return C.cidString(await C.cidOf(C.encodeDagCbor(sanitizeSubmission(o))));
+}
+function lineage(cid, gallery) {
+  const byCid = Object.fromEntries((gallery || []).map(g => [g.cid, g])), chain = [], seen = new Set();
+  let c = cid; while (c && byCid[c] && !seen.has(c)) { seen.add(c); chain.push(c); c = byCid[c].sub.parent; }
+  if (c && !seen.has(c)) chain.push(c);
+  return chain;
+}
+
+/* ----- guided tour: a list of steps, each with a view, optional element and a spoken line ----- */
+function tourSteps() {
+  const S = [
+    { view: 'claims', say: 'Welcome to the ORION Hub. Everything runs in this one page, offline, and nothing leaves your browser unless you share a link. This is the Claims tab: each claim is scored by its strongest support minus its strongest challenge, and repeating evidence changes nothing.' },
+    { view: 'bridges', say: 'Bridges link claims from different disciplines when their tags overlap enough. Move the threshold to see links appear and disappear.' },
+    { view: 'levels', say: 'The thirteen level path. Your level grows with the total score of distinct claims, and stops at thirteen.' },
+    { view: 'meters', say: 'The Kronos to Orion meter. Each event pulls it a fixed fraction of the way, and it always stays between zero and one. The background colour follows it.' },
+    { view: 'zoo', say: 'The Zoo gate. A result is admitted only with human approval, a preregistration, and no veto.' },
+    { view: 'atlas', say: 'The Atlas. Every knowledge element has a status: proved, corrected, symbolic, or design rule. Each is linked to the Lean theorem that checks it.' } ];
+  ['watermelon', 'newkin', 'agency', 'dodeca', 'tritorus'].forEach(id => { const e = BY_ID[id];
+    S.push({ view: 'atlas', el: id, say: `${e.title}. Status: ${STATUS[e.status].label}. ${e.text.plain}` }); });
+  S.push({ view: 'atlas', el: 'watermelon', level: 3, say: 'The level slider sets the knowledge level n. At level n you see n forms times n lenses, n squared cells: level three is nine cells, level seven is forty nine.' });
+  S.push({ view: 'atlas', say: 'You can remix any animation in the playbook editor, one statement per line, and share it as a link. Shared items are shown as community, unreviewed, until someone checks them.' });
+  S.push({ view: 'share', say: 'Share and archive: pack your whole state into a link, or save content-addressed snapshots as IPFS CAR files.' });
+  S.push({ view: 'verify', say: 'Verify runs the same thirty golden cases that Lean checks, so you can see this page still agrees with the proofs. That is the end of the tour.' });
+  return S;
+}
+const wordsIn = s => String(s).split(/\s+/).filter(Boolean).length;
+const fallbackMs = (s, rate = 1) => Math.round(Math.max(2500, wordsIn(s) * 400) / Math.max(0.5, Math.min(2, rate)));
+
+root.OrionAtlas = { STATUS, LENSES, FORMS, MAX_LEVEL, CATALOG, BY_ID, neighbours, edges, lensText, grid, representation, cloze,
+  egoGraphSvg, globalGraphSvg, parsePlaybook, serializePlaybook, renderPlaybook, PB_LIMITS, sanitizeSubmission, encodeSubmission,
+  decodeSubmission, submissionCid, lineage, tourSteps, fallbackMs, b64uEnc, b64uDec, esc };
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+
+<script>
+(function () {
+'use strict';
+const C = window.OrionCore, Q = C.Q, $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+const TIERS = Object.keys(C.TIER), RIGORS = Object.keys(C.RIGOR);
+
+/* ----- state: URL hash > localStorage > demo ----- */
+const DEMO = { v: 1, k: '10', alpha: '1/4', m0: '1/2', events: ['1', '0', '1'], zoo: { human: true, frozen: true, vetoes: [false, false] },
+  snapshots: [], claims: [
+    { text: 'Predator–prey populations oscillate', disc: 'ecology', tags: ['feedback-loop', 'oscillation', 'delay'],
+      refs: {}, support: [{ tier: 'audit', rigor: 'disclosed', sources: 3 }], conflict: [] },
+    { text: 'Boom–bust business cycles', disc: 'economics', tags: ['feedback-loop', 'oscillation', 'expectations'],
+      refs: {}, support: [{ tier: 'secondary', rigor: 'disclosed', sources: 1 }], conflict: [{ tier: 'unverified', rigor: 'opaque', sources: 40 }] },
+    { text: 'Fibonacci numbers in phyllotaxis', disc: 'biology', tags: ['fibonacci', 'golden-ratio', 'growth'],
+      refs: { oeis: 'A000045' }, support: [{ tier: 'primary', rigor: 'cryptographic', sources: 5 }], conflict: [] },
+    { text: 'Golden ratio in the dodecahedron', disc: 'geometry', tags: ['golden-ratio', 'symmetry', 'fibonacci'],
+      refs: { oeis: 'A001622' }, support: [{ tier: 'primary', rigor: 'cryptographic', sources: 2 }], conflict: [] } ] };
+function b64uEnc(str) { const b = new TextEncoder().encode(str); let s = ''; b.forEach(x => s += String.fromCharCode(x)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+function b64uDec(s) { s = s.replace(/-/g, '+').replace(/_/g, '/'); const bin = atob(s); return new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0))); }
+function sanitize(s) {
+  const ev = e => ({ tier: TIERS.includes(e.tier) ? e.tier : 'unverified', rigor: RIGORS.includes(e.rigor) ? e.rigor : 'opaque', sources: Math.max(0, Math.min(1e6, parseInt(e.sources) || 0)) });
+  const out = { v: 1, k: String(s.k || '10'), alpha: String(s.alpha || '1/4'), m0: String(s.m0 || '1/2') };
+  out.claims = (s.claims || []).map(c => ({ text: String(c.text || ''), disc: String(c.disc || ''), tags: (c.tags || []).map(String),
+    refs: Object.fromEntries(Object.entries(c.refs || {}).map(([k, v]) => [k, String(v)])), support: (c.support || []).map(ev), conflict: (c.conflict || []).map(ev) }));
+  out.events = (s.events || []).map(String); out.snapshots = (s.snapshots || []).map(String);
+  out.zoo = { human: !!(s.zoo || {}).human, frozen: !!(s.zoo || {}).frozen, vetoes: ((s.zoo || {}).vetoes || []).map(Boolean) };
+  return out;
+}
+function loadState() {
+  const m = location.hash.match(/[#&]s=([^&]+)/);
+  if (m) { try { return sanitize(JSON.parse(b64uDec(m[1]))); } catch (e) { console.warn('bad share link', e); } }
+  try { const ls = localStorage.getItem('orion-hub-state'); if (ls) return sanitize(JSON.parse(ls)); } catch (e) {}
+  return sanitize(DEMO);
+}
+let S = loadState();
+const portable = () => { const c = JSON.parse(JSON.stringify(S)); delete c.snapshots; return c; };
+function save() { try { localStorage.setItem('orion-hub-state', JSON.stringify(S)); } catch (e) {} }
+
+/* ----- nav, with ?view= URL argument ----- */
+const VIEWS = [['claims', 'Claims'], ['bridges', 'Bridges'], ['levels', '13 Levels'], ['meters', 'Meters'], ['zoo', 'Zoo gate'], ['atlas', 'Atlas'], ['share', 'Share & archive'], ['verify', 'Verify']];
+function show(v) {
+  VIEWS.forEach(([id]) => { $(id).classList.toggle('on', id === v); document.querySelector(`nav button[data-v=${id}]`).classList.toggle('on', id === v); });
+  const u = new URL(location.href); u.searchParams.set('view', v); try { history.replaceState(null, '', u); } catch (e) {}
+}
+VIEWS.forEach(([id, label]) => { const b = document.createElement('button'); b.textContent = label; b.dataset.v = id; b.onclick = () => show(id); $('nav').appendChild(b); });
+
+/* ----- claims ----- */
+const fmt = q => `${q.toString()} ≈ ${q.toNumber().toFixed(3)}`;
+function refLinks(r) {
+  const L = [];
+  if (/^Q\d+$/.test(r.wikidata || '')) L.push(`<a target="_blank" rel="noopener" href="https://www.wikidata.org/wiki/${r.wikidata}">Wikidata ${r.wikidata}</a>`);
+  if (/^(node|way|relation)\/\d+$/.test(r.osm || '')) L.push(`<a target="_blank" rel="noopener" href="https://www.openstreetmap.org/${r.osm}">OSM ${esc(r.osm)}</a>`);
+  if (/^A\d{6}$/.test(r.oeis || '')) L.push(`<a target="_blank" rel="noopener" href="https://oeis.org/${r.oeis}">OEIS ${r.oeis}</a>`);
+  if (r.lmfdb) L.push(`<a target="_blank" rel="noopener" href="https://www.lmfdb.org/${encodeURI(r.lmfdb.replace(/^\/+/, ''))}">LMFDB ${esc(r.lmfdb)}</a>`);
+  return L.join(' · ');
+}
+function explain(c) {
+  const bs = C.best(c.support), bc = C.best(c.conflict), sc = C.claimScore(c.support, c.conflict);
+  return `Claim: ${c.text}. Strongest support weighs ${bs.toNumber().toFixed(2)}, strongest challenge ${bc.toNumber().toFixed(2)}. Score ${sc.toNumber().toFixed(2)} out of 1.`;
+}
+function evRow(ci, side, e, j) {
+  return `<div class="row mono">${side === 'support' ? '＋' : '−'} ${e.tier} · ${e.rigor} · ${e.sources} src · W=${C.evidenceWeight(e.tier, e.rigor, e.sources).toString()}
+    <button class="b" data-act="delev" data-c="${ci}" data-s="${side}" data-j="${j}">✕</button></div>`;
+}
+function renderClaims() {
+  $('claimList').innerHTML = S.claims.map((c, i) => {
+    const sc = C.claimScore(c.support, c.conflict), r = c.refs || {};
+    return `<div class="card">
+      <div class="row"><b>${esc(c.text)}</b><span class="mut">${esc(c.disc)}</span>${c.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}
+        <span style="flex:1"></span><span class="score">${fmt(sc)}</span>
+        <button class="b" data-act="speak" data-c="${i}" title="read aloud">🔊</button><button class="b" data-act="del" data-c="${i}">delete</button></div>
+      <div class="row">${refLinks(r)} <span class="mut" id="wdl${i}"></span></div>
+      <div class="row">refs: Wikidata <input size="8" data-ref="wikidata" data-c="${i}" value="${esc(r.wikidata || '')}" placeholder="Q42">
+        OSM <input size="12" data-ref="osm" data-c="${i}" value="${esc(r.osm || '')}" placeholder="node/123">
+        OEIS <input size="8" data-ref="oeis" data-c="${i}" value="${esc(r.oeis || '')}" placeholder="A000045">
+        LMFDB <input size="18" data-ref="lmfdb" data-c="${i}" value="${esc(r.lmfdb || '')}" placeholder="EllipticCurve/Q/11/a/2">
+        <button class="b" data-act="wdlabel" data-c="${i}">fetch Wikidata label</button></div>
+      ${c.support.map((e, j) => evRow(i, 'support', e, j)).join('')}${c.conflict.map((e, j) => evRow(i, 'conflict', e, j)).join('')}
+      <div class="row"><select data-f="tier${i}">${TIERS.map(t => `<option>${t}</option>`).join('')}</select>
+        <select data-f="rigor${i}">${RIGORS.map(t => `<option>${t}</option>`).join('')}</select>
+        <input size="4" data-f="src${i}" value="1"> sources
+        <button class="b" data-act="addev" data-c="${i}" data-s="support">＋ support</button>
+        <button class="b" data-act="addev" data-c="${i}" data-s="conflict">− challenge</button></div></div>`;
+  }).join('') || '<div class="card mut">No claims yet.</div>';
+}
+$('claimList').addEventListener('click', async ev => {
+  const b = ev.target.closest('button[data-act]'); if (!b) return; const i = +b.dataset.c, c = S.claims[i];
+  if (b.dataset.act === 'del') S.claims.splice(i, 1);
+  else if (b.dataset.act === 'delev') c[b.dataset.s].splice(+b.dataset.j, 1);
+  else if (b.dataset.act === 'addev') { const q = f => document.querySelector(`[data-f="${f}${i}"]`).value;
+    c[b.dataset.s].push({ tier: q('tier'), rigor: q('rigor'), sources: Math.max(0, parseInt(q('src')) || 0) }); }
+  else if (b.dataset.act === 'speak') { if ('speechSynthesis' in window) { speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(explain(c))); } return; }
+  else if (b.dataset.act === 'wdlabel') {
+    const q = (c.refs || {}).wikidata; if (!/^Q\d+$/.test(q || '')) { $('wdl' + i).textContent = '(enter a Wikidata id such as Q42)'; return; }
+    try { const r = await fetch(`https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${q}&props=labels|descriptions&languages=en&format=json&origin=*`);
+      const j = await r.json(), e = j.entities[q]; $('wdl' + i).textContent = `“${e.labels && e.labels.en ? e.labels.en.value : q}” — ${e.descriptions && e.descriptions.en ? e.descriptions.en.value : ''}`;
+    } catch (e) { $('wdl' + i).textContent = '(offline or blocked)'; } return;
+  }
+  update();
+});
+$('claimList').addEventListener('change', ev => { const t = ev.target; if (!t.dataset.ref) return;
+  const c = S.claims[+t.dataset.c]; c.refs = c.refs || {}; c.refs[t.dataset.ref] = t.value.trim(); update(); });
+$('nAdd').onclick = () => { const text = $('nText').value.trim(); if (!text) return;
+  S.claims.push({ text, disc: $('nDisc').value.trim() || 'general', tags: $('nTags').value.split(',').map(s => s.trim()).filter(Boolean), refs: {}, support: [], conflict: [] });
+  $('nText').value = $('nTags').value = ''; update(); };
+
+/* ----- bridges ----- */
+function renderBridges() {
+  const th = new Q(BigInt($('theta').value), 100n); $('thetaV').textContent = th.toString();
+  const br = C.bridges(S.claims, th), n = S.claims.length;
+  const pos = S.claims.map((_, i) => [Math.cos(2 * Math.PI * i / Math.max(n, 1) - Math.PI / 2) * 95, Math.sin(2 * Math.PI * i / Math.max(n, 1) - Math.PI / 2) * 85]);
+  $('graph').innerHTML = br.map(b => `<line x1="${pos[b.i][0]}" y1="${pos[b.i][1]}" x2="${pos[b.j][0]}" y2="${pos[b.j][1]}" stroke="#7fd4ff" stroke-width="${1 + 3 * b.sim.toNumber()}" stroke-dasharray="6 4">
+      <animate attributeName="stroke-dashoffset" from="0" to="-20" dur="1.2s" repeatCount="indefinite"/></line>`).join('')
+    + S.claims.map((c, i) => `<g transform="translate(${pos[i][0]},${pos[i][1]})"><circle r="7" fill="hsl(${[...c.disc].reduce((h, ch) => h + ch.charCodeAt(0) * 37, 0) % 360},70%,60%)">
+      <animate attributeName="r" values="6;8;6" dur="${2 + i % 3}s" repeatCount="indefinite"/></circle>
+      <text y="-11" text-anchor="middle" font-size="8" fill="#e8ecff">${esc(c.text.slice(0, 28))}</text><text y="17" text-anchor="middle" font-size="7" fill="#9aa3c7">${esc(c.disc)}</text></g>`).join('');
+  $('bridgeList').innerHTML = br.length ? '<table><tr><th>bridge</th><th>similarity</th><th>linked because both involve</th></tr>' + br.map(b =>
+    `<tr><td>${esc(S.claims[b.i].text)} ↔ ${esc(S.claims[b.j].text)}</td><td class="mono">${b.sim.toString()}</td><td>${b.shared.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</td></tr>`).join('') + '</table>'
+    : '<p class="mut">No bridges at this threshold.</p>';
+}
+$('theta').oninput = renderBridges;
+
+/* ----- levels ----- */
+function renderLevels() {
+  let k; try { k = Q.of(S.k); if (k.cmp(0) <= 0) throw 0; } catch (e) { k = Q.of(10); }
+  const xp = C.experience(S.claims), lv = C.levelOf(k, xp);
+  let g = '';
+  for (let i = 1; i <= 13; i++) { const a = 2 * Math.PI * (i - 1) / 13 - Math.PI / 2, x = Math.cos(a) * 100, y = Math.sin(a) * 100;
+    g += `<g><circle cx="${x}" cy="${y}" r="${i === lv ? 14 : 10}" fill="${i < lv ? '#3b6fd8' : i === lv ? '#7dffb0' : '#1a2146'}" stroke="#7fd4ff">
+      ${i === lv ? '<animate attributeName="r" values="12;16;12" dur="1.6s" repeatCount="indefinite"/>' : ''}</circle>
+      <text x="${x}" y="${y + 4}" text-anchor="middle" font-size="11" fill="${i === lv ? '#021' : '#e8ecff'}">${i}</text></g>`; }
+  g += `<text y="-4" text-anchor="middle" font-size="22" fill="#e8ecff">Level ${lv}</text><text y="18" text-anchor="middle" font-size="11" fill="#9aa3c7">XP ${xp.toNumber().toFixed(3)}</text>`;
+  $('levelRing').innerHTML = g;
+  $('levelInfo').textContent = `XP = ${xp.toString()} · level ${lv} of 13 · next level at ${lv < 13 ? k.mul(lv).toString() : '—'} XP`;
+}
+$('kIn').onchange = () => { S.k = $('kIn').value.trim(); update(); };
+
+/* ----- meters ----- */
+let meterValue = 0.5;
+function renderMeters() {
+  let m; try { m = C.meterRun(S.alpha, S.m0, S.events); } catch (e) { m = Q.of('1/2'); }
+  meterValue = Math.max(0, Math.min(1, m.toNumber()));
+  $('meterMark').style.left = `calc(${meterValue * 100}% - 2px)`;
+  $('meterInfo').textContent = `events [${S.events.join(', ')}] → m = ${m.toString()} ≈ ${m.toNumber().toFixed(4)}`;
+}
+$('evK').onclick = () => { S.events.push('0'); update(); }; $('evO').onclick = () => { S.events.push('1'); update(); };
+$('evMix').onclick = () => { S.events.push('1/2'); update(); }; $('evClr').onclick = () => { S.events = []; update(); };
+$('alphaIn').onchange = () => { S.alpha = $('alphaIn').value.trim(); update(); }; $('m0In').onchange = () => { S.m0 = $('m0In').value.trim(); update(); };
+
+/* ----- zoo ----- */
+function renderZoo() {
+  $('zHuman').checked = S.zoo.human; $('zFrozen').checked = S.zoo.frozen;
+  $('zVetoes').innerHTML = S.zoo.vetoes.map((v, i) => `<button class="b" data-z="${i}">${v ? 'veto ✋' : 'pass ✓'}</button>`).join('');
+  const ok = C.admit(S.zoo.human, S.zoo.frozen, S.zoo.vetoes);
+  $('zOut').innerHTML = ok ? '<span class="ok">ADMITTED to the canonical record</span>' : '<span class="bad">NOT admitted</span>';
+}
+$('zVetoes').onclick = e => { const b = e.target.closest('[data-z]'); if (!b) return; S.zoo.vetoes[+b.dataset.z] = !S.zoo.vetoes[+b.dataset.z]; update(); };
+$('zAdd').onclick = () => { S.zoo.vetoes.push(false); update(); };
+$('zHuman').onchange = () => { S.zoo.human = $('zHuman').checked; update(); }; $('zFrozen').onchange = () => { S.zoo.frozen = $('zFrozen').checked; update(); };
+
+/* ----- share & archive ----- */
+function download(name, bytes, type) { const a = document.createElement('a'); a.href = URL.createObjectURL(bytes instanceof Blob ? bytes : new Blob([bytes], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }
+function shareURL() { const u = new URL(location.href); u.hash = 's=' + b64uEnc(JSON.stringify(portable())); return u.toString(); }
+$('shCopy').onclick = async () => { const u = shareURL(); try { history.replaceState(null, '', u); } catch (e) {}
+  try { await navigator.clipboard.writeText(u); $('shMsg').textContent = `copied (${u.length} characters)`; } catch (e) { $('shMsg').textContent = 'link placed in the address bar'; } };
+async function block() { const bytes = C.encodeDagCbor(portable()); const cid = await C.cidOf(bytes); return { bytes, cid, s: C.cidString(cid) }; }
+$('snap').onclick = async () => { const b = await block(); if (S.snapshots[S.snapshots.length - 1] !== b.s) S.snapshots.push(b.s);
+  $('snapInfo').textContent = `CID ${b.s} · ${b.bytes.length} bytes DAG-CBOR`; update(); };
+$('carOut').onclick = async () => { const b = await block(); download(`orion-${b.s}.car`, C.makeCar(b.cid, b.bytes), 'application/vnd.ipld.car'); };
+$('cborOut').onclick = async () => { const b = await block(); download(`${b.s}.cbor`, b.bytes, 'application/vnd.ipld.dag-cbor'); };
+$('ttlOut').onclick = () => download('orion-hub.ttl', C.toTurtle(S), 'text/turtle');
+$('jsonOut').onclick = () => download('orion-hub.json', JSON.stringify(portable(), null, 2), 'application/json');
+$('impFile').onchange = async () => {
+  const f = $('impFile').files[0]; if (!f) return; const bytes = new Uint8Array(await f.arrayBuffer());
+  try {
+    let obj, note = '';
+    if (f.name.endsWith('.json')) obj = JSON.parse(new TextDecoder().decode(bytes));
+    else if (f.name.endsWith('.car')) { const car = await C.readCar(bytes);
+      if (car.blocks.some(b => !b.valid)) throw new Error('a block does not match its CID — refused');
+      obj = C.decodeDagCbor(car.blocks[0].data); note = ' · CID ' + C.cidString(car.blocks[0].cid) + ' verified'; }
+    else { const m = f.name.match(/^(b[a-z2-7]+)\.cbor$/); const cid = C.cidString(await C.cidOf(bytes));
+      if (m && m[1] !== cid) throw new Error('bytes do not match the CID in the filename — refused'); obj = C.decodeDagCbor(bytes); note = ' · CID ' + cid; }
+    const snaps = S.snapshots; S = sanitize(obj); S.snapshots = snaps; update();
+    $('impMsg').innerHTML = `<span class="ok">imported${note}</span>`;
+  } catch (e) { $('impMsg').innerHTML = `<span class="bad">${esc(e.message)}</span>`; }
+};
+
+/* ----- media ----- */
+$('gifOut').onclick = async () => {
+  const w = 160, h = 90, tmp = document.createElement('canvas'); tmp.width = w; tmp.height = h; const cx = tmp.getContext('2d'); const frames = [];
+  $('mediaMsg').textContent = 'recording GIF…';
+  for (let i = 0; i < 30; i++) { cx.drawImage($('bg'), 0, 0, w, h); frames.push(C.quantize332(cx.getImageData(0, 0, w, h).data)); await new Promise(r => setTimeout(r, 100)); }
+  download('orion.gif', C.encodeGif(w, h, frames, 10), 'image/gif'); $('mediaMsg').textContent = 'GIF saved';
+};
+$('vidOut').onclick = () => {
+  if (!window.MediaRecorder || !$('bg').captureStream) { $('mediaMsg').textContent = 'video recording not supported in this browser'; return; }
+  const type = ['video/mp4', 'video/webm;codecs=vp9', 'video/webm'].find(t => MediaRecorder.isTypeSupported(t));
+  const rec = new MediaRecorder($('bg').captureStream(30), type ? { mimeType: type } : {}); const parts = [];
+  rec.ondataavailable = e => parts.push(e.data);
+  rec.onstop = () => { const t = rec.mimeType || 'video/webm'; download('orion.' + (t.includes('mp4') ? 'mp4' : 'webm'), new Blob(parts, { type: t })); $('mediaMsg').textContent = 'video saved'; };
+  rec.start(); $('mediaMsg').textContent = 'recording video…'; setTimeout(() => rec.stop(), 5000);
+};
+
+/* ----- verify ----- */
+$('runGold').onclick = () => { const rows = C.runGolden(), pass = rows.filter(r => r.ok).length;
+  $('goldOut').innerHTML = `<span class="${pass === rows.length ? 'ok' : 'bad'}">${pass} / ${rows.length} pass</span>`;
+  $('goldTable').innerHTML = '<tr><th>case</th><th>expected</th><th>got</th><th></th></tr>' + rows.map(r => `<tr><td class="mono">${esc(r.name)}</td><td class="mono">${r.want}</td><td class="mono">${r.got}</td><td>${r.ok ? '✓' : '✗'}</td></tr>`).join(''); };
+
+/* ----- WebGL shader background ----- */
+(function gl() {
+  const cv = $('bg'), g = cv.getContext('webgl', { preserveDrawingBuffer: true }); if (!g) return;
+  const vs = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
+  const fs = `precision mediump float;uniform vec2 r;uniform float t;uniform float m;
+    void main(){vec2 u=(gl_FragCoord.xy-.5*r)/r.y;float a=atan(u.y,u.x),d=length(u);
+      float ring=smoothstep(.02,0.,abs(fract(d*6.5-t*.08)-.5)-.46);
+      float petals=.5+.5*cos(13.*a+t*.3-d*9.);
+      vec3 kron=vec3(1.,.55,.2),ori=vec3(.45,.8,1.);vec3 c=mix(kron,ori,m);
+      vec3 col=c*(.10+.25*petals*exp(-d*2.2))+ring*c*.35+vec3(.02,.03,.08);gl_FragColor=vec4(col,1.);}`;
+  const sh = (type, src) => { const s = g.createShader(type); g.shaderSource(s, src); g.compileShader(s); return s; };
+  const pr = g.createProgram(); g.attachShader(pr, sh(g.VERTEX_SHADER, vs)); g.attachShader(pr, sh(g.FRAGMENT_SHADER, fs)); g.linkProgram(pr);
+  if (!g.getProgramParameter(pr, g.LINK_STATUS)) return; g.useProgram(pr);
+  g.bindBuffer(g.ARRAY_BUFFER, g.createBuffer()); g.bufferData(g.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), g.STATIC_DRAW);
+  const loc = g.getAttribLocation(pr, 'p'); g.enableVertexAttribArray(loc); g.vertexAttribPointer(loc, 2, g.FLOAT, false, 0, 0);
+  const ur = g.getUniformLocation(pr, 'r'), ut = g.getUniformLocation(pr, 't'), um = g.getUniformLocation(pr, 'm'); let shown = 0.5;
+  (function frame(ts) { const w = innerWidth, h = innerHeight; if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; g.viewport(0, 0, w, h); }
+    shown += (meterValue - shown) * 0.05; g.uniform2f(ur, w, h); g.uniform1f(ut, ts / 1000); g.uniform1f(um, shown); g.drawArrays(g.TRIANGLE_STRIP, 0, 4); requestAnimationFrame(frame); })(0);
+})();
+
+/* ----- logo ring ----- */
+$('logoRing').insertAdjacentHTML('beforeend', Array.from({ length: 13 }, (_, i) => { const a = 2 * Math.PI * i / 13; return `<circle cx="${Math.cos(a) * 22}" cy="${Math.sin(a) * 22}" r="3" fill="${i === 12 ? '#7dffb0' : '#7fd4ff'}"/>`; }).join(''));
+
+function update() {
+  $('kIn').value = S.k; $('alphaIn').value = S.alpha; $('m0In').value = S.m0;
+  renderClaims(); renderBridges(); renderLevels(); renderMeters(); renderZoo();
+  $('snapLog').innerHTML = S.snapshots.map(s => `<li>${s}</li>`).join('');
+  save();
+}
+update();
+const v0 = new URL(location.href).searchParams.get('view');
+show(VIEWS.some(v => v[0] === v0) ? v0 : 'claims');
+window.OrionHub = { show };
+})();
+</script>
+<script id="orion-atlas-ui">
+(function () {
+'use strict';
+const A = window.OrionAtlas, H = window.OrionHub, $ = id => document.getElementById(id), esc = A.esc;
+const url = () => new URL(location.href);
+const SUBS_KEY = 'orion-atlas-subs';
+let cur = A.BY_ID[url().searchParams.get('el')] ? url().searchParams.get('el') : 'watermelon';
+let level = Math.max(1, Math.min(A.MAX_LEVEL, parseInt(url().searchParams.get('n')) || 3));
+let gallery = []; try { gallery = JSON.parse(localStorage.getItem(SUBS_KEY) || '[]').filter(g => g && g.cid && g.sub).map(g => ({ cid: String(g.cid), sub: A.sanitizeSubmission(g.sub), added: String(g.added || '') })); } catch (e) { gallery = []; }
+const saveGallery = () => { try { localStorage.setItem(SUBS_KEY, JSON.stringify(gallery)); } catch (e) {} };
+
+function say(text) { if (!('speechSynthesis' in window)) return; speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.rate = +$('tRate').value || 1; const v = pickVoice(); if (v) u.voice = v; speechSynthesis.speak(u); }
+function setUrl() { const u = url(); u.searchParams.set('el', cur); u.searchParams.set('n', level); try { history.replaceState(null, '', u); } catch (e) {} }
+
+/* ----- element picker, legend, grid ----- */
+$('atEl').innerHTML = A.CATALOG.map(e => `<option value="${e.id}">${esc(e.title)} (${A.STATUS[e.status].label})</option>`).join('');
+$('atLegend').innerHTML = Object.entries(A.STATUS).map(([k, s]) => `<span class="tag" style="background:${s.color};color:#021">${s.label}</span>`).join(' ') +
+  ' <span class="mut">proved: the claim checks out in Lean · corrected: the claim as printed fails, a corrected form is proved · symbolic: false as ordinary arithmetic, read as a symbol · design rule: a rule of the system whose safety properties are proved</span>';
+function cellHtml(r, i) {
+  if (r.kind === 'html') return r.body;
+  if (r.kind === 'svg') return r.body + `<div class="mut small">${esc(r.caption)}</div>`;
+  if (r.kind === 'speech') return `<button class="b" data-say="${esc(r.body)}">🔊 speak</button><div class="small">${esc(r.body)}</div>`;
+  if (r.kind === 'quiz') return `<div class="small">${esc(r.body)}</div><div class="row"><input size="10" id="qz${i}" placeholder="fill the blank"><button class="b" data-qz="${i}" data-ans="${esc(r.answer)}">check</button><span id="qzr${i}"></span></div>`;
+  if (r.kind === 'code') return `<pre class="mono small" style="max-height:180px;overflow:auto;white-space:pre-wrap">${esc(r.body)}</pre>`;
+  return '';
+}
+function renderAtlas() {
+  const e = A.BY_ID[cur], cells = A.grid(level), n = level;
+  $('atEl').value = cur; $('atLvl').value = level; $('atLvlV').textContent = `${n} → ${n} forms × ${n} lenses = ${cells.length} representations`;
+  $('atHead').innerHTML = `<div class="row"><b style="font-size:18px">${esc(e.title)}</b><span class="tag" style="background:${A.STATUS[e.status].color};color:#021">${A.STATUS[e.status].label}</span>
+    <span class="mut">Lean: <code>${esc(e.lean)}</code> in <code>${esc(e.file)}</code></span>
+    <button class="b" data-say="${esc(A.lensText(e, 'plain'))}">🔊</button></div>`;
+  let g = `<div></div>` + A.LENSES.slice(0, n).map(l => `<div class="ghd">${esc(l[1])}</div>`).join('');
+  A.FORMS.slice(0, n).forEach(([f, fl], fi) => {
+    g += `<div class="ghd">${esc(fl)}</div>`;
+    A.LENSES.slice(0, n).forEach(([l], li) => { g += `<div class="gcell">${cellHtml(A.representation(cur, f, l), fi * n + li)}</div>`; });
+  });
+  $('atGrid').style.gridTemplateColumns = `90px repeat(${n}, minmax(170px, 1fr))`;
+  $('atGrid').innerHTML = g;
+  $('atGlobal').innerHTML = A.globalGraphSvg(cur);
+  renderGallery(); setUrl();
+}
+$('atEl').onchange = () => { cur = $('atEl').value; loadEditor(); renderAtlas(); };
+$('atLvl').oninput = () => { level = +$('atLvl').value; renderAtlas(); };
+$('atGlobal').addEventListener('click', ev => { const g = ev.target.closest('[data-el]'); if (g) { cur = g.dataset.el; loadEditor(); renderAtlas(); } });
+document.addEventListener('click', ev => {
+  const s = ev.target.closest('[data-say]'); if (s) { say(s.dataset.say); return; }
+  const q = ev.target.closest('[data-qz]'); if (q) { const i = q.dataset.qz, got = ($('qz' + i).value || '').trim().toLowerCase(), want = q.dataset.ans.toLowerCase();
+    $('qzr' + i).innerHTML = got === want ? '<span class="ok">✓</span>' : `<span class="bad">✗</span> <span class="mut">(${esc(q.dataset.ans)})</span>`; }
+});
+
+/* ----- remix / submit editor ----- */
+let parent = '';
+function draft() { return { v: 1, el: cur, kind: $('sbKind').value, lens: $('sbLens').value, title: $('sbTitle').value, by: $('sbBy').value, playbook: $('sbPb').value, text: $('sbText').value, parent }; }
+function loadEditor(sub) {
+  const e = A.BY_ID[cur]; parent = sub && sub.cid ? sub.cid : '';
+  $('sbKind').value = sub ? sub.sub.kind : 'anim'; $('sbLens').value = sub ? sub.sub.lens : 'plain';
+  $('sbTitle').value = sub ? sub.sub.title : ''; $('sbPb').value = sub && sub.sub.playbook ? sub.sub.playbook : e.anim; $('sbText').value = sub && sub.sub.text ? sub.sub.text : '';
+  $('sbParent').textContent = parent ? `remix of ${parent.slice(0, 16)}…` : `starting from the built-in animation for ${e.title}`;
+  preview();
+}
+$('sbLens').innerHTML = A.LENSES.map(l => `<option value="${l[0]}">${esc(l[1])}</option>`).join('');
+function preview() {
+  const kind = $('sbKind').value; $('sbPb').style.display = kind === 'anim' ? '' : 'none'; $('sbText').style.display = kind === 'text' ? '' : 'none';
+  if (kind === 'anim') { const r = A.parsePlaybook($('sbPb').value); $('sbPrev').innerHTML = A.renderPlaybook(r.spec);
+    $('sbErr').innerHTML = r.errors.length ? r.errors.slice(0, 8).map(x => `<div class="bad small">${esc(x)}</div>`).join('') : `<span class="ok small">${r.spec.shapes.length} shapes, ${r.spec.dur} s</span>`; }
+  else { $('sbPrev').innerHTML = `<div>${esc($('sbText').value)}</div>`; $('sbErr').textContent = ''; }
+}
+['sbKind', 'sbPb', 'sbText'].forEach(id => $(id).addEventListener('input', preview));
+function shareLink(sub) { const u = url(); u.searchParams.set('view', 'atlas'); u.searchParams.set('el', sub.el); u.hash = 'sub=' + A.encodeSubmission(sub); return u.toString(); }
+async function copy(text, msgEl) { try { await navigator.clipboard.writeText(text); $(msgEl).textContent = 'link copied'; } catch (e) { $(msgEl).textContent = ''; prompt('Copy this link:', text); } }
+$('sbLink').onclick = () => { const L = shareLink(draft()); $('sbOut').value = L; copy(L, 'sbMsg'); };
+async function addToGallery(sub) {
+  const s = A.sanitizeSubmission(sub), cid = await A.submissionCid(s);
+  if (!gallery.some(g => g.cid === cid)) { gallery.unshift({ cid, sub: s, added: new Date().toISOString().slice(0, 10) }); saveGallery(); }
+  return cid;
+}
+$('sbSave').onclick = async () => { const cid = await addToGallery(draft()); $('sbMsg').textContent = `saved as ${cid.slice(0, 20)}…`; renderGallery(); };
+$('sbReset').onclick = () => loadEditor();
+
+/* ----- community gallery (local, unreviewed) ----- */
+function subPreview(s) { return s.kind === 'anim' ? A.renderPlaybook(A.parsePlaybook(s.playbook).spec) : `<div>${esc(s.text)}</div>`; }
+function renderGallery() {
+  const mine = gallery.filter(g => g.sub.el === cur);
+  $('atGallery').innerHTML = (mine.map(g => `<div class="gcell" style="margin:6px 0"><div class="row"><span class="tag" style="background:#ff9a3c;color:#021">community · unreviewed</span>
+      <b>${esc(g.sub.title || '(untitled)')}</b><span class="mut">by ${esc(g.sub.by)} · ${esc(g.sub.lens)} · ${esc(g.added)}</span></div>
+    <div style="max-width:320px">${subPreview(g.sub)}</div>
+    <div class="mono small mut">${esc(g.cid)}${g.sub.parent ? ` · lineage: ${A.lineage(g.cid, gallery).slice(1).map(c => esc(c.slice(0, 14)) + '…').join(' ← ')}` : ''}</div>
+    <div class="row"><button class="b" data-g="remix" data-cid="${g.cid}">remix</button><button class="b" data-g="link" data-cid="${g.cid}">copy link</button><button class="b" data-g="del" data-cid="${g.cid}">remove</button></div></div>`).join('')
+    || '<div class="mut">Nothing saved for this element yet. Make a remix above, or open a shared <code>#sub=</code> link.</div>') +
+    `<div class="mut small">${gallery.length} community item(s) in this browser across all elements.</div>`;
+}
+$('atGallery').addEventListener('click', ev => { const b = ev.target.closest('[data-g]'); if (!b) return; const g = gallery.find(x => x.cid === b.dataset.cid); if (!g) return;
+  if (b.dataset.g === 'remix') { loadEditor(g); $('sbTitle').focus(); }
+  else if (b.dataset.g === 'link') copy(shareLink(Object.assign({}, g.sub)), 'sbMsg');
+  else if (b.dataset.g === 'del') { gallery = gallery.filter(x => x !== g); saveGallery(); renderGallery(); } });
+
+/* incoming shared item: preview first, add only on request */
+(function incoming() {
+  const m = location.hash.match(/[#&]sub=([^&]+)/); if (!m) return;
+  let s; try { s = A.decodeSubmission(m[1]); } catch (e) { $('atIncoming').innerHTML = `<div class="card bad">This shared link could not be read (${esc(e.message)}).</div>`; return; }
+  cur = s.el;
+  $('atIncoming').innerHTML = `<div class="card" style="border-color:#ff9a3c"><div class="row"><span class="tag" style="background:#ff9a3c;color:#021">shared with you · community · unreviewed</span>
+    <b>${esc(s.title || '(untitled)')}</b><span class="mut">by ${esc(s.by)} for ${esc(A.BY_ID[s.el].title)} (${esc(s.lens)})</span></div>
+    <div style="max-width:360px">${subPreview(s)}</div>
+    <div class="mut small">Only whitelisted shapes, numbers, colours and escaped text are drawn; nothing in the link can run code. It has not been reviewed.</div>
+    <div class="row"><button class="b" id="inAdd">add to my gallery</button><button class="b" id="inRemix">remix</button><span id="inMsg" class="mut"></span></div></div>`;
+  $('inAdd').onclick = async () => { const cid = await addToGallery(s); $('inMsg').textContent = `added as ${cid.slice(0, 20)}…`; renderGallery(); };
+  $('inRemix').onclick = async () => { const cid = await A.submissionCid(s); loadEditor({ cid, sub: s }); };
+})();
+
+/* ----- spoken guided tour ----- */
+const T = { steps: A.tourSteps(), i: 0, playing: false, token: 0, timer: 0, watchdog: 0 };
+function voices() { return 'speechSynthesis' in window ? speechSynthesis.getVoices() : []; }
+function pickVoice() { const n = $('tVoice').value; return voices().find(v => v.name === n) || null; }
+function fillVoices() { const vs = voices(); $('tVoice').innerHTML = '<option value="">default voice</option>' + vs.map(v => `<option>${esc(v.name)}</option>`).join(''); }
+if ('speechSynthesis' in window) { fillVoices(); speechSynthesis.onvoiceschanged = fillVoices; } else $('tVoice').style.display = 'none';
+function clearTimers() { clearTimeout(T.timer); clearTimeout(T.watchdog); }
+function goStep(i) {
+  clearTimers(); T.i = Math.max(0, Math.min(T.steps.length - 1, i)); const st = T.steps[T.i], tok = ++T.token;
+  H.show(st.view); if (st.el) { cur = st.el; loadEditor(); } if (st.level) level = st.level; if (st.view === 'atlas') renderAtlas();
+  $('tCap').textContent = `${T.i + 1}/${T.steps.length} · ${st.say}`;
+  if (!T.playing) return;
+  const next = () => { if (tok !== T.token || !T.playing) return; if (T.i < T.steps.length - 1) goStep(T.i + 1); else stopTour(false); };
+  const rate = +$('tRate').value || 1;
+  if ('speechSynthesis' in window && $('tMute').checked === false) {
+    speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(st.say); u.rate = rate; const v = pickVoice(); if (v) u.voice = v;
+    u.onend = () => { T.timer = setTimeout(next, 600); }; speechSynthesis.speak(u);
+    T.watchdog = setTimeout(next, A.fallbackMs(st.say, rate) * 2 + 4000);
+  } else T.timer = setTimeout(next, A.fallbackMs(st.say, rate));
+}
+function openTour() { $('tourBar').style.display = 'flex'; }
+function stopTour(close) { T.playing = false; T.token++; clearTimers(); if ('speechSynthesis' in window) speechSynthesis.cancel(); $('tPlay').textContent = '▶'; if (close) $('tourBar').style.display = 'none'; }
+$('tPlay').onclick = () => { if (T.playing) stopTour(false); else { T.playing = true; $('tPlay').textContent = '⏸'; goStep(T.i); } };
+$('tPrev').onclick = () => goStep(T.i - 1);
+$('tNext').onclick = () => goStep(T.i + 1);
+$('tStop').onclick = () => { stopTour(true); T.i = 0; };
+$('atTour').onclick = $('hdrTour').onclick = () => { openTour(); T.playing = true; $('tPlay').textContent = '⏸'; goStep(0); };
+
+loadEditor(); renderAtlas();
+if (/[#&]tour=1/.test(location.hash)) { openTour(); goStep(0); $('tCap').textContent += '  (press ▶ to start speaking)'; }
+})();
+</script>
+</body>
+</html>

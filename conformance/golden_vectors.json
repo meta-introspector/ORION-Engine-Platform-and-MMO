@@ -1,0 +1,64 @@
+{
+  "_about": "Golden test vectors for the ORION hub rules. Every row is checked by Lean in RequestProject/Conformance/GoldenVectors.lean. Fractions are exact; compare floats with a tolerance such as 1e-9.",
+  "evidence_weight": {
+    "_formula": "W = S_t * R_m * C_i * (1 - D_r); S_t: primary 1, audit 0.8, secondary 0.5, unverified 0.1; R_m: cryptographic 1, disclosed 0.8, opaque 0.1; C_i = 1 if R_m < 0.8 else min(1 + 0.1 n, 1.5)",
+    "cases": [
+      {"tier": "primary",    "rigor": "cryptographic", "sources": 5,   "d": "0",   "expected": "3/2"},
+      {"tier": "primary",    "rigor": "cryptographic", "sources": 6,   "d": "0",   "expected": "3/2"},
+      {"tier": "primary",    "rigor": "cryptographic", "sources": 0,   "d": "0",   "expected": "1"},
+      {"tier": "audit",      "rigor": "disclosed",     "sources": 3,   "d": "0",   "expected": "104/125"},
+      {"tier": "secondary",  "rigor": "disclosed",     "sources": 2,   "d": "1/4", "expected": "9/25"},
+      {"tier": "unverified", "rigor": "opaque",        "sources": 100, "d": "0",   "expected": "1/100"},
+      {"tier": "primary",    "rigor": "opaque",        "sources": 9,   "d": "0",   "expected": "1/10"},
+      {"tier": "primary",    "rigor": "cryptographic", "sources": 5,   "d": "1",   "expected": "0"}
+    ]
+  },
+  "claim_score": {
+    "_formula": "score = max(0, best(support) - best(conflict)) / 1.5, where best = largest base weight W(e) with D_r = 0, or 0 for an empty list",
+    "evidence": {
+      "gold":   {"tier": "primary",    "rigor": "cryptographic", "sources": 5},
+      "audit":  {"tier": "audit",      "rigor": "disclosed",     "sources": 3},
+      "blog":   {"tier": "secondary",  "rigor": "disclosed",     "sources": 0},
+      "rumour": {"tier": "unverified", "rigor": "opaque",        "sources": 50}
+    },
+    "cases": [
+      {"support": ["gold"],                     "conflict": [],         "expected": "1"},
+      {"support": ["audit"],                    "conflict": [],         "expected": "208/375"},
+      {"support": ["audit"],                    "conflict": ["blog"],   "expected": "36/125"},
+      {"support": ["blog"],                     "conflict": ["audit"],  "expected": "0"},
+      {"support": ["rumour","rumour","rumour"], "conflict": [],         "expected": "1/150"},
+      {"support": [],                           "conflict": ["rumour"], "expected": "0"},
+      {"support": ["gold","blog"],              "conflict": ["rumour"], "expected": "149/150"}
+    ]
+  },
+  "level": {
+    "_formula": "level = min(13, 1 + floor(max(0, xp) / k)), here k = 10",
+    "cases": [
+      {"xp": "0",       "expected": 1},
+      {"xp": "999/100", "expected": 1},
+      {"xp": "10",      "expected": 2},
+      {"xp": "57",      "expected": 6},
+      {"xp": "120",     "expected": 13},
+      {"xp": "5000",    "expected": 13},
+      {"xp": "-5",      "expected": 1}
+    ]
+  },
+  "meter": {
+    "_formula": "m <- (1 - alpha) * m + alpha * s for each event s (oldest first); here alpha = 1/4, start m = 1/2",
+    "cases": [
+      {"events": [1],       "expected": "5/8"},
+      {"events": [1, 0, 1], "expected": "77/128"},
+      {"events": [],        "expected": "1/2"}
+    ]
+  },
+  "zoo_admit": {
+    "_formula": "admit = human_approved AND frozen_before_outcome AND no auditor vetoes",
+    "cases": [
+      {"human_approved": true,  "frozen_before_outcome": true,  "vetoes": [false, false, false], "expected": true},
+      {"human_approved": true,  "frozen_before_outcome": true,  "vetoes": [false, true, false],  "expected": false},
+      {"human_approved": false, "frozen_before_outcome": true,  "vetoes": [],                    "expected": false},
+      {"human_approved": true,  "frozen_before_outcome": false, "vetoes": [false],               "expected": false},
+      {"human_approved": true,  "frozen_before_outcome": true,  "vetoes": [],                    "expected": true}
+    ]
+  }
+}
