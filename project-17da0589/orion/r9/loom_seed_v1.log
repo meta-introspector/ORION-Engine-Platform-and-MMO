@@ -1,0 +1,11 @@
+seeded 24 rulings; verdicts: ['SATISFIED']
+preview of a deliberately stale 2% tax fact (test only): consistent = False | violated: [('economy.tax_percent', 3, 2)]
+commit rejected: World fact conflicts with the active contract
+archive head unchanged: True
+{
+  "valid": true,
+  "events": 25,
+  "authority": "NONE",
+  "head": "1cca2a04ee54e19159edc63a1fb5b5eaa621c2aafc4f2f40e0ccc8e6789a85ee",
+  "checkpoint": null
+}

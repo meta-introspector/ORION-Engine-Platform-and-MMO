@@ -1,0 +1,46 @@
++ python3 scripts/static_qa.py
+static QA PASS: 20 Lean files; no sorry/admit placeholders
++ python3 -m unittest discover -s tests_py
++ tail -4
+----------------------------------------------------------------------
+Ran 10 tests in 0.375s
+
+OK
++ python3 scripts/run_v07_federation.py
++ tail -5
+  "post_rotation_quorum": true,
+  "quorum_round0": true,
+  "rotation_without_old_key_signature": true,
+  "snapshot_quorum": true
+}
++ python3 scripts/run_adversarial_v07.py
++ tail -5
+  "single_approval_cannot_rotate": true,
+  "single_witness_cannot_certify_snapshot": true,
+  "single_witness_no_quorum": true,
+  "snapshot_requires_and_reaches_quorum": true
+}
++ test -s artifacts/v0.7/disagreement_receipt.json
++ test -s artifacts/v0.7/fork_equivocation.json
++ test -s artifacts/v0.7/fork_quorum_evidence.json
++ test -s artifacts/v0.7/snapshot.json
++ test -s artifacts/v0.7/snapshot_certificate.json
++ python3 -m protocol.demo
++ tail -3
++ python3 scripts/verify_chronicle.py artifacts/demo_chronicle.json --witness artifacts/local_witness.json
++ tail -3
+VERIFY PASS
++ python3 scripts/replay_bundle.py artifacts/replay_bundle.json
++ python3 scripts/replay_bundle.py artifacts/replay_bundle.json
++ diff -u /tmp/ra.json /tmp/rb.json
++ python3 scripts/run_adversarial.py
++ tail -3
+    ]
+  }
+}
++ python3 -c '
+from protocol.adversarial_v06 import run_suite
+r=run_suite(); print(r); assert all(r.values())'
+{'checkpoint_signature_tamper': True, 'checkpoint_head_tamper': True, 'witness_rollback_refused': True, 'same_length_fork_refused': True, 'checkpoint_detects_tail_truncation': True, 'replay_event_target_tamper': True, 'replay_post_state_tamper': True, 'replay_event_delete': True}
++ echo ALL_PY_OK
+ALL_PY_OK

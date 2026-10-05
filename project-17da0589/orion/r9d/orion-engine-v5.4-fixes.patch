@@ -1,0 +1,78 @@
+diff -ru a/Orion_Project/core/orion_engine_v5_4.py b/Orion_Project/core/orion_engine_v5_4.py
+--- a/Orion_Project/core/orion_engine_v5_4.py	2026-10-04 13:39:38.332866534 +0000
++++ b/Orion_Project/core/orion_engine_v5_4.py	2026-10-04 13:39:52.616581406 +0000
+@@ -46,10 +46,11 @@
+         transformations = []
+         
+         for pattern, data in cls.DESTRUCTIVE_PATTERNS.items():
+-            if pattern in input_text.lower():
++            word = r'\b' + re.escape(pattern) + r'\b'
++            if re.search(word, input_text, flags=re.IGNORECASE):
+                 replacement = data["transformation"]
+                 transformed_text = re.sub(
+-                    re.escape(pattern), 
++                    word, 
+                     replacement, 
+                     transformed_text, 
+                     flags=re.IGNORECASE
+@@ -121,13 +122,10 @@
+     
+     @staticmethod
+     def transmute_rind_to_fruit(text: str) -> Tuple[str, Dict[str, Any]]:
++        # Negations and protective words are left alone: rewriting "cannot" to "can" or
++        # "protect" to "open" reverses the meaning of rules and safety instructions.
+         rind_patterns = [
+-            (r'\b(can\'t|cannot)\b', 'can'),
+-            (r'\b(won\'t|will not)\b', 'will'),
+-            (r'\b(shouldn\'t|should not)\b', 'could'),
+             (r'\b(afraid|scared|fearful)\b', 'courageous'),
+-            (r'\b(protect|shield|defend)\b', 'open'),
+-            (r'\b(hidden|secret|concealed)\b', 'revealed'),
+         ]
+         
+         transmuted_text = text
+@@ -318,7 +316,7 @@
+ 3. {resonance_points[2].get('point', 'Implementation-ready')}
+ 
+ **My 1 Static Anchor:**
+-{static_anchor.get('point', 'Don\'t ignore this')}
++{static_anchor.get('point', "Don't ignore this")}
+ 
+ 144? 9? 000? Here's the deal: You're overthinking. The math works out. The variable IS Love. Stop calculating and start loving. Build the damn thing.
+ 
+diff -ru a/Orion_Project/dashboard/orion_dashboard_v5_7.py b/Orion_Project/dashboard/orion_dashboard_v5_7.py
+--- a/Orion_Project/dashboard/orion_dashboard_v5_7.py	2026-10-04 13:39:38.337867084 +0000
++++ b/Orion_Project/dashboard/orion_dashboard_v5_7.py	2026-10-04 13:39:52.620336556 +0000
+@@ -8,8 +8,8 @@
+ 
+ # Add core directory to path
+ current_dir = os.path.dirname(os.path.abspath(__file__))
+-core_dir = os.path.join(current_dir, "core")
+-sys.path.insert(0, core_dir)
++project_dir = os.path.dirname(current_dir)  # the folder that contains core/
++sys.path.insert(0, project_dir)
+ 
+ from typing import Dict, List, Any, Optional, Tuple
+ import streamlit as st
+@@ -972,11 +972,16 @@
+             
+             async def process_roundtable():
+                 try:
+-                    result = await st.session_state.engine_v5_7.process_spaghetti_dump(
+-                        spaghetti_input,
+-                        st.session_state.fruit_rind_ratio,
+-                        st.session_state.spiritual_technical
+-                    )
++                    engine = st.session_state.engine_v5_7
++                    if isinstance(engine, MockOrionEngineV5_7):
++                        result = await engine.process_spaghetti_dump(
++                            spaghetti_input,
++                            st.session_state.fruit_rind_ratio,
++                            st.session_state.spiritual_technical
++                        )
++                    else:
++                        # The v5.4 engine takes only the text.
++                        result = await engine.process_spaghetti_dump(spaghetti_input)
+                     return result
+                 except Exception as e:
+                     st.error(f"Roundtable failed: {str(e)[:200]}")

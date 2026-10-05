@@ -1,0 +1,39 @@
+### manifest
+14
+### tests
+.......                                                                  [100%]
+7 passed in 0.04s
+### templates
+templates/receipt.attested.template.json
+{"error": "invalid expected_archive_sha256", "status": "INVALID"}
+exit 2
+templates/receipt.falsified.template.json
+{"error": "invalid expected_archive_sha256", "status": "INVALID"}
+exit 2
+templates/receipt.indeterminate.template.json
+{"error": "invalid expected_archive_sha256", "status": "INVALID"}
+exit 2
+### fresh end-to-end with a throwaway Ed25519 key
+VALID receipt_sha256=0fc9df7f23f33d99e4bcdf8e896581a1cf199724c8bc51047cb8eac411ddf090 signature=PASS
+exit 0
+INVALID: detached Ed25519 signature verification failed
+after one-byte edit exit 2
+### probe: FALSIFIED verdict when the archive digest did not match and nothing executed
+{"independently_reproduced": false, "receipt_sha256": "d2b70451fbaadce0aa8bc6dd863d75d7dca1a0194c13659f146497f3f0f02693", "semantic_class": "INDEPENDENTLY_REPRODUCED", "signature_present": true, "status": "VALID", "verdict": "FALSIFIED"}
+exit 0
+### probe: digest mismatch, yet all six gates (incl. integrity) recorded PASS - i.e. the mismatched payload was executed
+{"error": "all_gates_conjoined_pass inconsistent with gate_results", "status": "INVALID"}
+exit 2
+### same probe with all_gates_conjoined_pass=true
+{"independently_reproduced": false, "receipt_sha256": "16232e8c923583d9cb7790e67a18292cfc15374ebb6a8a98a113fd7803983a5a", "semantic_class": "INDEPENDENTLY_REPRODUCED", "signature_present": true, "status": "VALID", "verdict": "FALSIFIED"}
+exit 0
+
+### suggested validator fix (orion/r9c/wn-e3-validator-fix.patch) applied to a copy
+.......                                                                  [100%]
+7 passed in 0.09s
+probe (FALSIFIED, digests mismatch, nothing run):
+{"independently_reproduced": false, "receipt_sha256": "d2b70451fbaadce0aa8bc6dd863d75d7dca1a0194c13659f146497f3f0f02693", "semantic_class": "INDEPENDENTLY_REPRODUCED", "signature_present": true, "status": "VALID", "verdict": "FALSIFIED"}
+probe (digests mismatch, all gates PASS):
+{"error": "gate_H_integrity inconsistent with digests", "status": "INVALID"}
+valid attested receipt:
+{"independently_reproduced": true, "receipt_sha256": "3bd58ecc09ab6e1de430ed02b885373bef97f6a4139ba22e071eea311822a67e", "semantic_class": "INDEPENDENTLY_REPRODUCED", "signature_present": true, "status": "VALID", "verdict": "ATTESTED"}

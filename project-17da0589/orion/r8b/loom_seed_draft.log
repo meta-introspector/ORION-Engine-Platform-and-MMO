@@ -1,0 +1,14 @@
+# Draft Loom seed, built 2026-10-04 with Loom/Mythos v0.2.0 (sha256 5a1ce9e4...)
+$ python3 orion/r8b/loom_seed_draft.py <loom package> orion/r8b/loom_seed_draft.json
+seeded 16 rulings; verdicts: ['SATISFIED']
+preview of a stale 2% tax fact: consistent = False | violated: [('economy.tax_percent', 3, 2)]
+commit rejected: World fact conflicts with the active contract
+archive head unchanged: True
+$ python3 -m loom_mythos verify orion/r8b/loom_seed_draft.json
+{
+  "valid": true,
+  "events": 17,
+  "authority": "NONE",
+  "head": "716f0a7beeb4bece9fa702f58de862d31c562f1076df0d94e3573eed1887220c",
+  "checkpoint": null
+}

@@ -1,0 +1,38 @@
+### lake build (v4.22.0) - library + hostile tests
+info: Version 4.2.4 of elan is available! Use `elan self update` to update.
+info: downloading https://releases.lean-lang.org/lean4/v4.22.0/lean-4.22.0-linux.tar.zst
+info: installing /root/.elan/toolchains/leanprover--lean4---v4.22.0
+✔ [2/14] Built IntrospectionTwin.Twin.Bounds
+✔ [3/14] Built IntrospectionTwin.Twin.Observation
+✔ [4/14] Built IntrospectionTwin.Witness
+✔ [5/14] Built IntrospectionTwin.Twin.State
+✔ [6/14] Built IntrospectionTwin.Receipt
+✔ [7/14] Built IntrospectionTwin.Gate
+✔ [8/14] Built IntrospectionTwin.Admit
+✔ [9/14] Built IntrospectionTwin
+✔ [11/14] Built Test.Harness
+✔ [12/14] Built Test.NativeDecide
+✔ [13/14] Built Test.Hostile
+Build completed successfully.
+
+real	0m46.433s
+user	0m46.990s
+sys	0m9.870s
+exit 0
+### kernel replay (lean4checker v4.22.0, built here)
+Honest modules (must replay):
+  replay ok      IntrospectionTwin.Admit
+  replay ok      IntrospectionTwin.Gate
+  replay ok      IntrospectionTwin.Receipt
+  replay ok      IntrospectionTwin.Twin.Bounds
+  replay ok      IntrospectionTwin.Twin.Observation
+  replay ok      IntrospectionTwin.Twin.State
+  replay ok      IntrospectionTwin.Witness
+  replay ok      Test.Harness
+  replay ok      Test.Hostile
+  replay ok      IntrospectionTwin
+Poisoned modules (must be refused):
+  refused ok     Bypass.KernelBypass  ('bypass_false' has type)
+  refused ok     Test.NativeDecide  (_nativeDecide_)
+KERNEL REPLAY: PASS
+exit 0

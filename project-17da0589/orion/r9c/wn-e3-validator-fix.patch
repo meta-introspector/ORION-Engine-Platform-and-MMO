@@ -1,0 +1,15 @@
+--- a/validator/validate_receipt.py	1970-01-01 00:00:00.000000000 +0000
++++ b/validator/validate_receipt.py	2026-10-04 12:08:21.537060675 +0000
+@@ -72,6 +72,12 @@
+     gates = data.get("gate_results") or {}
+     for g in GATES:
+         require(gates.get(g) in ALLOWED_GATE, f"invalid or missing {g}")
++    # The integrity gate must agree with the digests, and a mismatched payload must not be run.
++    require((gates["gate_H_integrity"] == "PASS") is (archive_match and manifest_match),
++            "gate_H_integrity inconsistent with digests")
++    if pre_match is False:
++        require(all(gates[g] == "NOT_RUN" for g in GATES[1:]),
++                "digest mismatch: later gates must be NOT_RUN (do not execute the mismatched payload)")
+     all_pass = all(gates[g] == "PASS" for g in GATES)
+ 
+     term = data.get("terminal_contract") or {}

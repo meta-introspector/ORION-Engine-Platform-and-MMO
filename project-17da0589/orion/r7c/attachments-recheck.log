@@ -1,0 +1,10 @@
+# R7 Live attachments re-checked, 2026-10-04 (third pass), Python 3.11
+# The three ZIPs on the page were downloaded again and compared with the earlier runs.
+5a1ce9e46411072e8e7b3d74bcece76b9a915fafc153754d61190320ac98f990  Loom_Mythos_Continuity_Kernel_v0.2.0.zip   (same hash as orion/r7b/new-packages-checks.log)
+a880c01ed6b56a244911a14377611ea977f2c79b7acc95b8a391ce116381aa24  Weaver_Integration_Demonstrator_v0.1.zip  (same hash as orion/r7b/new-packages-checks.log)
+79f6883ca82c8fb262f3133ecbdfeaed9486cfb436b2845e28563775f789bfcc  Weaver_Agent_Security_Pilot_v0.2.zip      (outer hash not recorded in R7; re-run below)
+## Weaver_Agent_Security_Pilot_v0.2: SHA256SUMS.json
+23 checked, 0 mismatches
+## python3 -m unittest discover -s tests
+Ran 22 tests ... OK
+# Conclusion: no new package content on the page this pass; results from R7 / R7b stand.

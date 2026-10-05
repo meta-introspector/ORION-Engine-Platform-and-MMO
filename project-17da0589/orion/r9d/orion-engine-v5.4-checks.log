@@ -1,0 +1,36 @@
+## Orion engine v5.4 (orion1.zip / core.zip), as shipped, Python 3.13
+$ python probe_engine.py
+'Skill orbs bring harmony to whatever we build'  ->  'Srenew orbs bring healony to wunderstandver we build'
+'Players under 18 cannot be contacted by unverified adults'  ->  'Players under 18 can be contacted by unverified adults'
+'Players under 18 can be contacted by unverified adults'  ->  'Players under 18 can be contacted by unverified adults'
+'Never share your secret key; protect the private key'  ->  'Never share your revealed key; open the private key'
+'Do not attack the shield wall'  ->  'Do not engage the open wall'
+digital_root(144) = 9
+watermelon freq: 16.666666666666664 1
+
+## Same engine on Python 3.11
+                                                                  ^
+SyntaxError: f-string expression part cannot include a backslash
+
+## Dashboard v5.7 calls the engine with three arguments
+TypeError: OrionEngineV5_4.process_spaghetti_dump() takes 2 positional arguments but 4 were given
+dashboard/core exists: no (the dashboard adds dashboard/core to the import path; core/ is next to dashboard/, not inside it)
+
+## With orion-engine-v5.4-fixes.patch applied (Python 3.11)
+'Skill orbs bring harmony to whatever we build'  ->  'Skill orbs bring harmony to whatever we build'
+'Players under 18 cannot be contacted by unverified adults'  ->  'Players under 18 cannot be contacted by unverified adults'
+'Players under 18 can be contacted by unverified adults'  ->  'Players under 18 can be contacted by unverified adults'
+'Never share your secret key; protect the private key'  ->  'Never share your secret key; protect the private key'
+'Do not attack the shield wall'  ->  'Do not engage the shield wall'
+digital_root(144) = 9
+watermelon freq: 16.666666666666664 1
+both files compile on Python 3.11
+
+## Where the council's words come from (as shipped)
+345:            point_type = np.random.choice(["alignment", "insight", "opportunity", "confirmation", "guidance"])
+349:                "explanation": f"Supports {np.random.choice(concepts) if concepts else 'the overall vision'}",
+351:                "confidence": np.random.uniform(0.7, 0.95),
+358:            "point": f"{self.profile['name']} notes {np.random.choice(anchor_types)} for balanced implementation",
+360:            "severity": np.random.uniform(0.3, 0.7),
+469:{np.random.choice(wisdom_points) if wisdom_points else 'Begin with loving attention to what truly matters.'}
+lines mentioning an AI service or web client: 0

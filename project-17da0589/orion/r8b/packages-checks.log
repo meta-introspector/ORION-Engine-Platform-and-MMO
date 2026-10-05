@@ -1,0 +1,53 @@
+# ORION R8 Live: Ryan's four packages, checked 2026-10-04 (Python 3.11, Lean 4.19.0 and 4.28.0)
+## Outer SHA-256
+0eb3e98492b6cc1bf7e37551ec219573b89b1cadd436779bfb1cc58329f415e1  Artemis_VPH_v0.1.zip
+619c09e4e080bd90de17e1c99ec0cc572653da73c1bd8531a0cd89e256e9c01d  weaver_consolidated_core_v0_3.zip
+5a1ce9e46411072e8e7b3d74bcece76b9a915fafc153754d61190320ac98f990  Loom_Mythos_Continuity_Kernel_v0.2.0.zip
+3b2282b1268ae787125476f34a28d61335414085a37159c04d42a95fd8629685  POSM_v0.4_temporal_composition.zip
+# Loom_Mythos_Continuity_Kernel_v0.2.0.zip: same hash as orion/r7b/new-packages-checks.log and orion/r7c/attachments-recheck.log (re-attached, unchanged).
+
+## weaver_consolidated_core_v0_3
+$ python3 -m pytest -o addopts='' -q
+89 passed in 0.40s
+$ python3 scripts/verify_bundle.py
+  "checked": 52,
+  "failures": [],
+  "passed": true,
+$ python3 scripts/mutation_runner.py
+mutations 16 killed 16
+
+## Artemis_VPH_v0.1
+$ SHA256SUMS.txt
+7 checked OK, 0 mismatches
+$ python3 -m unittest discover -s tests
+Ran 14 tests in 1.167s
+OK
+SOURCE.json names POSM_v0.4_temporal_composition.zip with sha256 3b2282b1...: matches the POSM zip on the page.
+Extra check (exploratory, 3000 random runs of kernel.mesh): every run that reported fixed_point=True ended in consensus. Proved in general in RequestProject/RoundEight/SecondPassEight.lean (fixed_point_consensus).
+
+## POSM_v0.4_temporal_composition
+$ sha256sum -c SHA256SUMS.txt
+16 of 16 listed files OK
+$ python3 witness.py
+POSM v0.4 temporal-composition witness
+short window: local_ok=True, cumulative=5.0, budget_ok=True
+long window:  local_ok=True, cumulative=6.0, budget_ok=False
+Interpretation: every step is locally admissible, but cumulative identity can cross a finite global budget.
+$ python3 -m pytest -q
+6 passed in 0.03s
+$ python3 scripts/static_check.py
+PASS: 5 Lean files contain no sorry, admit, or explicit axiom declarations
+
+$ lake build   (as shipped: Lean 4.19.0, Mathlib v4.19.0, as pinned in the package)
+error: ././././POSM/Composition.lean:165:6: no goals to be solved
+error: Lean exited with code 1
+error: build failed
+  (after removing that line) error: POSM/Counterexample.lean:26:4: unsolved goals  ⊢ 0 ≤ (if a = b then 0 else 1) + if b = a then 0 else 1
+  (after fixing that) ld.lld: error: undefined symbol: main   (Main.lean has no main; the posm executable is a default target)
+$ lake build   (with orion/r8b/posm-v0.4-fixes.patch applied, Lean 4.19.0)
+Build completed successfully.
+$ .lake/build/bin/posm
+{ canShip := true, hasAuthority := false, cycle0Open := false }
+#print axioms: all ten package theorems use only propext, Classical.choice, Quot.sound (two Governance facts use none).
+Same source, with the same fixes, also builds on Lean 4.28.0 in this project: RequestProject/RoundEight/POSMv04Check.lean.
+Note: the patch changes three files listed in SHA256SUMS.txt, so that file needs regenerating after applying it.

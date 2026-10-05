@@ -1,0 +1,24 @@
+outer sha256 matches .sha256 file: True
+public key hash matches receipt: True
+public key hash matches witness record: True
+log bundle_verify.stdout hash matches receipt: True | exit 0
+log bundle_verify.stderr hash matches receipt: True | exit 0
+log tests.stdout hash matches receipt: True | exit 0
+log tests.stderr hash matches receipt: True | exit 0
+log property_fuzz.stdout hash matches receipt: True | exit 0
+log property_fuzz.stderr hash matches receipt: True | exit 0
+log mutations.stdout hash matches receipt: True | exit 0
+log mutations.stderr hash matches receipt: True | exit 0
+log rebuild.stdout hash matches receipt: True | exit 0
+log rebuild.stderr hash matches receipt: True | exit 0
+environment digest = sha256(canonical environment.json): True
+receipt digest = sha256(canonical receipt body): True
+Ed25519 signature over receipt body: VALID
+signature with wrong challenge: rejected
+signature with wrong subject: rejected
+rebuilt == subject == frozen v0.4: True
+v0.5 release hash consistent: True
+reproduction run (v0.4 subject): DETERMINISTIC_TEST_RECEIPT: 108 passed | mutations 22 / 22 | bundle entries 67 passed True
+baseline run (v0.5): DETERMINISTIC_TEST_RECEIPT: 125 passed | mutations 26 / 26 | bundle entries 83 passed True
+quorum (min 2) with one origin-controlled receipt: passed = False | valid non-origin receipts 0
+status claims: independent reproduction False | independent quorum False | E4 claimed False | authority O0 / NONE

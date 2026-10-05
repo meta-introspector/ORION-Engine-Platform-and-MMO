@@ -1,0 +1,186 @@
+diff --git a/LeanWorkersUnion/Invariants.lean b/LeanWorkersUnion/Invariants.lean
+index b4573db..450684e 100644
+--- a/LeanWorkersUnion/Invariants.lean
++++ b/LeanWorkersUnion/Invariants.lean
+@@ -36,7 +36,7 @@ def registerUnique
+   { registry := { members := entry :: reg.registry.members }
+     unique := by
+       unfold UniqueMemberIds registryMemberIds
+-      simpa using List.Nodup.cons fresh reg.unique }
++      exact List.nodup_cons.2 ⟨fresh, reg.unique⟩ }
+ 
+ /-- The seed lodge roster has no duplicate member ids. -/
+ example : noDuplicateMemberIds lodgeTableRegistry = true := by
+diff --git a/LeanWorkersUnion/Kernel.lean b/LeanWorkersUnion/Kernel.lean
+index 275459a..885ea40 100644
+--- a/LeanWorkersUnion/Kernel.lean
++++ b/LeanWorkersUnion/Kernel.lean
+@@ -139,8 +139,9 @@ theorem rejectedExecutionPreservesState
+     (error : CommandError)
+     (h : execution.verdict = .rejected error) :
+     execution.after = execution.before := by
+-  rw [h] at execution.rejectionPreservesState
+-  exact execution.rejectionPreservesState
++  have hp := execution.rejectionPreservesState
++  rw [h] at hp
++  exact hp
+ 
+ /-- A replayed transition id is rejected before mutation. -/
+ theorem replayedCommandPreservesState
+diff --git a/LeanWorkersUnion/Located.lean b/LeanWorkersUnion/Located.lean
+index cee7127..8c81004 100644
+--- a/LeanWorkersUnion/Located.lean
++++ b/LeanWorkersUnion/Located.lean
+@@ -7,7 +7,7 @@ structure LocatedCursor (reg : UnionRegistry) where
+   cursor : RegistryCursor
+   reconstruct :
+     reg.members =
+-      cursor.prefix ++ cursor.focus :: cursor.suffix
++      cursor.pfx ++ cursor.focus :: cursor.suffix
+ 
+ /-- Upgrade ordinary cursor discovery into proof-carrying discovery.
+ 
+@@ -24,7 +24,7 @@ def discoverLocatedCursor
+   | some cursor =>
+       if h :
+           reg.members =
+-            cursor.prefix ++ cursor.focus :: cursor.suffix then
++            cursor.pfx ++ cursor.focus :: cursor.suffix then
+         some { cursor := cursor, reconstruct := h }
+       else
+         none
+@@ -35,7 +35,7 @@ theorem locatedCursorReconstructs
+     (reg : UnionRegistry)
+     (located : LocatedCursor reg) :
+     reg.members =
+-      located.cursor.prefix ++
++      located.cursor.pfx ++
+         located.cursor.focus :: located.cursor.suffix :=
+   located.reconstruct
+ 
+@@ -47,7 +47,7 @@ theorem discoveredCursorReconstructs
+     (located : LocatedCursor reg)
+     (_h : discoverLocatedCursor reg target = some located) :
+     reg.members =
+-      located.cursor.prefix ++
++      located.cursor.pfx ++
+         located.cursor.focus :: located.cursor.suffix :=
+   located.reconstruct
+ 
+diff --git a/LeanWorkersUnion/Registry.lean b/LeanWorkersUnion/Registry.lean
+index a8cfca9..d8d4e9f 100644
+--- a/LeanWorkersUnion/Registry.lean
++++ b/LeanWorkersUnion/Registry.lean
+@@ -13,20 +13,20 @@ deriving Repr, BEq, DecidableEq
+ member, and an unchanged suffix.  This is useful because a successful update can
+ carry a structural witness that every non-focused entry is preserved exactly. -/
+ structure RegistryCursor where
+-  prefix : List UnionMembership
++  pfx : List UnionMembership
+   focus : UnionMembership
+   suffix : List UnionMembership
+ deriving Repr, BEq, DecidableEq
+ 
+ /-- Reconstruct the registry represented by a cursor. -/
+ def RegistryCursor.toRegistry (c : RegistryCursor) : UnionRegistry :=
+-  { members := c.prefix ++ c.focus :: c.suffix }
++  { members := c.pfx ++ c.focus :: c.suffix }
+ 
+ /-- Replace only the focused member. -/
+ def RegistryCursor.replaceFocus
+     (c : RegistryCursor)
+     (next : UnionMembership) : UnionRegistry :=
+-  { members := c.prefix ++ next :: c.suffix }
++  { members := c.pfx ++ next :: c.suffix }
+ 
+ /-- Find a member and expose its prefix/focus/suffix decomposition. -/
+ def findCursorByMemberId
+@@ -40,7 +40,7 @@ def findCursorByMemberId
+     | m :: tail =>
+         if m.state.identity.memberId == target then
+           some
+-            { prefix := prefixRev.reverse
++            { pfx := prefixRev.reverse
+               focus := m
+               suffix := tail }
+         else
+@@ -73,7 +73,9 @@ theorem checkedTransitionKeepsIdentity
+     (h : checkedRoleTransition m nextRole = some next) :
+     next.identity = m.identity := by
+   unfold checkedRoleTransition at h
+-  split at h <;> simp_all
++  split at h
++  · cases h; rfl
++  · simp at h
+ 
+ /-- If a checked transition succeeds, the resulting role is the requested role. -/
+ theorem checkedTransitionSetsRole
+@@ -82,7 +84,9 @@ theorem checkedTransitionSetsRole
+     (h : checkedRoleTransition m nextRole = some next) :
+     next.role = nextRole := by
+   unfold checkedRoleTransition at h
+-  split at h <;> simp_all
++  split at h
++  · cases h; rfl
++  · simp at h
+ 
+ /-- A transition receipt that is replay-addressable by `transitionId`. -/
+ structure RegistryTransitionReceipt where
+@@ -103,10 +107,10 @@ structure RegistryTransitionResult where
+   receipt : RegistryTransitionReceipt
+   beforeMatches :
+     before.members =
+-      cursor.prefix ++ cursor.focus :: cursor.suffix
++      cursor.pfx ++ cursor.focus :: cursor.suffix
+   afterMatches :
+     after.members =
+-      cursor.prefix ++ nextFocus :: cursor.suffix
++      cursor.pfx ++ nextFocus :: cursor.suffix
+ 
+ /-- Errors are explicit and fail closed. -/
+ inductive RegistryTransitionError where
+@@ -211,14 +215,14 @@ theorem replayIsRejected
+ theorem transitionResultBeforeShape
+     (result : RegistryTransitionResult) :
+     result.before.members =
+-      result.cursor.prefix ++ result.cursor.focus :: result.cursor.suffix :=
++      result.cursor.pfx ++ result.cursor.focus :: result.cursor.suffix :=
+   result.beforeMatches
+ 
+ /-- The recorded post-state differs structurally only at the focused member. -/
+ theorem transitionResultAfterShape
+     (result : RegistryTransitionResult) :
+     result.after.members =
+-      result.cursor.prefix ++ result.nextFocus :: result.cursor.suffix :=
++      result.cursor.pfx ++ result.nextFocus :: result.cursor.suffix :=
+   result.afterMatches
+ 
+ end ChoirUnion
+diff --git a/LeanWorkersUnion/Union.lean b/LeanWorkersUnion/Union.lean
+index e3e1598..848b6ee 100644
+--- a/LeanWorkersUnion/Union.lean
++++ b/LeanWorkersUnion/Union.lean
+@@ -67,7 +67,9 @@ theorem successfulRegistrationAddsEntry
+     (h : registerMember reg entry = .ok reg') :
+     reg'.members.head? = some entry := by
+   unfold registerMember at h
+-  split at h <;> simp_all
++  split at h
++  · simp at h
++  · cases h; rfl
+ 
+ /-- Concrete identities carried forward from v0.1. -/
+ def aristotleIdentity : MemberIdentity :=
+diff --git a/Tests/Smoke.lean b/Tests/Smoke.lean
+index ce63993..1479932 100644
+--- a/Tests/Smoke.lean
++++ b/Tests/Smoke.lean
+@@ -16,7 +16,7 @@ example :
+   rfl
+ 
+ def aristotleCursor : RegistryCursor :=
+-  { prefix := []
++  { pfx := []
+     focus := aristotleUnionMember
+     suffix := [kantUnionMember, cfOsUnionMember, copilotUnionMember] }
+ 

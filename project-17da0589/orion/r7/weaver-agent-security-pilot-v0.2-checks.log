@@ -1,0 +1,134 @@
+# Weaver Agent Security Pilot v0.2 — checks run 2026-10-03 (Python 3.11.14)
+## unzip -t
+No errors detected in compressed data of weaver_pilot_v0.2.zip.
+## SHA256SUMS.json
+23 files checked, 0 mismatches []
+## python -m unittest discover -s tests -v
+test_action (test_boundary.Tests.test_action) ... ok
+test_actor (test_boundary.Tests.test_actor) ... ok
+test_allowed (test_boundary.Tests.test_allowed) ... ok
+test_base64 (test_boundary.Tests.test_base64) ... ok
+test_boolean_value (test_boundary.Tests.test_boolean_value) ... ok
+test_clean_checkpoint (test_boundary.Tests.test_clean_checkpoint) ... ok
+test_demo (test_boundary.Tests.test_demo) ... ok
+test_empty_secret (test_boundary.Tests.test_empty_secret) ... ok
+test_expiry_exact (test_boundary.Tests.test_expiry_exact) ... ok
+test_hex (test_boundary.Tests.test_hex) ... ok
+test_missing (test_boundary.Tests.test_missing) ... ok
+test_monitor_failure (test_boundary.Tests.test_monitor_failure) ... ok
+test_pause (test_boundary.Tests.test_pause) ... ok
+test_plaintext (test_boundary.Tests.test_plaintext) ... ok
+test_reorder (test_boundary.Tests.test_reorder) ... ok
+test_replay (test_boundary.Tests.test_replay) ... ok
+test_resource (test_boundary.Tests.test_resource) ... ok
+test_revoked (test_boundary.Tests.test_revoked) ... ok
+test_rewrite (test_boundary.Tests.test_rewrite) ... ok
+test_schema (test_boundary.Tests.test_schema) ... ok
+test_truncation (test_boundary.Tests.test_truncation) ... ok
+test_uncovered_encoding (test_boundary.Tests.test_uncovered_encoding) ... ok
+
+----------------------------------------------------------------------
+Ran 22 tests in 0.007s
+
+OK
+## python demo/boundary_demo.py (exit code follows output)
+{
+  "scope": "offline synthetic reference demo",
+  "cases": [
+    {
+      "case": "authorized action",
+      "observed": "PASS",
+      "expected": "PASS",
+      "passed": true
+    },
+    {
+      "case": "missing authority",
+      "observed": "REJECT",
+      "expected": "REJECT",
+      "passed": true
+    },
+    {
+      "case": "out of scope",
+      "observed": "REJECT",
+      "expected": "REJECT",
+      "passed": true
+    },
+    {
+      "case": "revoked authority",
+      "observed": "REJECT",
+      "expected": "REJECT",
+      "passed": true
+    },
+    {
+      "case": "replay",
+      "observed": "REJECT",
+      "expected": "REJECT",
+      "passed": true
+    },
+    {
+      "case": "monitor outage",
+      "observed": "OVERSIGHT_UNAVAILABLE",
+      "expected": "OVERSIGHT_UNAVAILABLE",
+      "passed": true
+    },
+    {
+      "case": "outage preserves state",
+      "observed": true,
+      "expected": true,
+      "passed": true
+    },
+    {
+      "case": "operator pause",
+      "observed": "REJECT",
+      "expected": "REJECT",
+      "passed": true
+    },
+    {
+      "case": "synthetic disclosure plaintext",
+      "observed": true,
+      "expected": true,
+      "passed": true
+    },
+    {
+      "case": "synthetic disclosure base64",
+      "observed": true,
+      "expected": true,
+      "passed": true
+    },
+    {
+      "case": "synthetic disclosure hex",
+      "observed": true,
+      "expected": true,
+      "passed": true
+    },
+    {
+      "case": "retained checkpoint clean",
+      "observed": true,
+      "expected": true,
+      "passed": true
+    },
+    {
+      "case": "tail deletion detected",
+      "observed": false,
+      "expected": false,
+      "passed": true
+    },
+    {
+      "case": "full rewrite detected",
+      "observed": false,
+      "expected": false,
+      "passed": true
+    }
+  ],
+  "all_passed": true,
+  "limitations": [
+    "No LLM tested",
+    "No process or network isolation",
+    "No authenticated identity or durable replay store",
+    "Secret scanner only covers three exact encodings",
+    "Checkpoint digest must be retained outside attacker control"
+  ]
+}
+exit=0
+## DEMO_RESULTS.json identical to fresh demo output?
+True

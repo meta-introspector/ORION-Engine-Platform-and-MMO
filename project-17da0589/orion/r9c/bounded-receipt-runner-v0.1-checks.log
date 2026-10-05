@@ -1,0 +1,73 @@
+### manifest
+26
+### tests
+.......                                                                  [100%]
+7 passed in 0.78s
+### shipped receipts
+{
+  "overall": "VALID",
+  "signature_valid": true,
+  "public_key_binding": true,
+  "manifest_binding": true,
+  "evidence_integrity": true,
+  "claim_ceiling_bound": true,
+  "semantic_fields_present": true,
+  "claim_class": "OBSERVED_REPOSITORY_IDENTITY",
+  "claim_text": "The governed GitHead action returned the recorded Git commit identifier for the bound repository root at execution time.",
+  "does_not_establish": [
+    "repository correctness",
+    "absence of vulnerabilities",
+    "production readiness",
+    "complete test coverage",
+    "universal source authenticity"
+  ],
+  "falsifier": "Re-execution under the same bound repository state or independent examination of the bound repository metadata yields a different HEAD identity than the recorded result.",
+  "issuer_boundary_grounding_level": "SELF_ASSERTED",
+  "important_note": "VALID means this receipt passed cryptographic and structural checks. It does not independently establish that the producer's factual account is true or that a stronger downstream claim is admissible."
+}
+exit 0
+{
+  "overall": "INVALID",
+  "signature_valid": false,
+  "public_key_binding": true,
+  "manifest_binding": true,
+  "evidence_integrity": true,
+  "claim_ceiling_bound": true,
+  "semantic_fields_present": true,
+  "claim_class": "OBSERVED_REPOSITORY_IDENTITY",
+  "claim_text": "The governed GitHead action returned the recorded Git commit identifier for the bound repository root at execution time. [tampered]",
+  "does_not_establish": [
+    "repository correctness",
+    "absence of vulnerabilities",
+    "production readiness",
+    "complete test coverage",
+    "universal source authenticity"
+  ],
+  "falsifier": "Re-execution under the same bound repository state or independent examination of the bound repository metadata yields a different HEAD identity than the recorded result.",
+  "issuer_boundary_grounding_level": "SELF_ASSERTED",
+  "important_note": "VALID means this receipt passed cryptographic and structural checks. It does not independently establish that the producer's factual account is true or that a stronger downstream claim is admissible."
+}
+exit 2
+### fresh end-to-end
+{
+  "private_key": "k.private.pem",
+  "public_key": "k.public.pem"
+}
+{
+  "receipt": "r.json",
+  "signature": "r.json.sig"
+}
+  "overall": "VALID",
+  "claim_class": "OBSERVED_REPOSITORY_IDENTITY",
+exit 0
+  "overall": "INVALID",
+one-byte-flip exit 2
+### any shell action?
+usage: bounded-run run [-h] --key KEY --action
+                       {GitHead,GitStatus,ReadFile,SearchFiles,RunTestSuite}
+                       --grant-user GRANT_USER --root ROOT --out OUT
+                       [--path PATH] [--query QUERY]
+                       [--issuer-controller ISSUER_CONTROLLER]
+                       [--grounding-level {SELF_ASSERTED,LOCALLY_OBSERVED,EXTERNALLY_ATTESTED}]
+bounded-run run: error: argument --action: invalid choice: 'Shell' (choose from 'GitHead', 'GitStatus', 'ReadFile', 'SearchFiles', 'RunTestSuite')
+exit 2

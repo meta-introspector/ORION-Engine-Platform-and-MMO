@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>friction atlas — kinetic friction, the Avatar, and language</title>
+<meta name="description" content="A spoken, animated atlas of the friction examination: n² representations per knowledge element, SVG animations, and community submissions shared by link.">
+<link rel="stylesheet" href="css/atlas.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23070b18'/><path d='M4 22 C10 22 10 10 16 10 C22 10 22 22 28 22' stroke='%23ffd479' stroke-width='3' fill='none' stroke-linecap='round'/></svg>">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <h1>friction atlas</h1>
+    <p class="tag">a body in motion needs friction — matched, not zero</p>
+  </div>
+  <div class="level" role="group" aria-label="Knowledge level">
+    <label for="level">knowledge level <b>n</b></label>
+    <input id="level" type="range" min="1" max="5" step="1" value="2">
+    <output id="levelOut" for="level">n = 2 · n² = 4 representations</output>
+  </div>
+  <div class="tourbar" role="group" aria-label="Spoken tour">
+    <button id="tourPlay" class="primary" title="Start or resume the spoken tour">▶ tour</button>
+    <button id="tourPause" title="Pause">⏸</button>
+    <button id="tourPrev" title="Previous step">⏮</button>
+    <button id="tourNext" title="Next step">⏭</button>
+    <button id="tourStop" title="Stop">⏹</button>
+    <label class="small">rate <input id="tourRate" type="range" min="0.6" max="1.6" step="0.1" value="1"></label>
+    <select id="tourVoice" aria-label="Voice"><option value="">default voice</option></select>
+  </div>
+  <nav class="actions">
+    <button id="openSubmit">＋ submit</button>
+    <button id="openGallery">gallery <span id="galleryCount" class="pill">0</span></button>
+    <button id="openHelp" title="About">?</button>
+  </nav>
+</header>
+
+<div id="caption" class="caption" aria-live="polite" hidden>
+  <span id="captionStep" class="pill"></span><span id="captionText"></span>
+</div>
+
+<main>
+  <section class="graphpane" aria-label="Knowledge graph">
+    <h2>knowledge graph <small>click a node · arrows mean “builds on”</small></h2>
+    <div id="graph" class="graph"></div>
+    <p class="legend"><span class="dot proved"></span> proved in Lean <span class="dot interp"></span> interpretive (illustrative only)</p>
+  </section>
+
+  <section id="element" class="elementpane" aria-label="Knowledge element">
+    <div class="elhead">
+      <div>
+        <h2 id="elTitle"></h2>
+        <p id="elMeta" class="meta"></p>
+      </div>
+      <div class="elbtns">
+        <button id="elSpeak" title="Read this element aloud">🔊 speak</button>
+        <button id="elLink" title="Copy a link to this element at this level">🔗 link</button>
+      </div>
+    </div>
+    <div id="grid" class="grid" role="grid"></div>
+    <div id="focus" class="focus" hidden>
+      <div class="focushead">
+        <h3 id="focusTitle"></h3>
+        <div class="focusbtns">
+          <button id="focusSpeak">🔊 speak</button>
+          <button id="focusLink">🔗 copy link</button>
+          <button id="focusSave">⤓ save .svg</button>
+          <button id="focusRemix">✎ remix</button>
+          <button id="focusClose" aria-label="Close">✕</button>
+        </div>
+      </div>
+      <div id="focusBody" class="focusbody"></div>
+      <p id="focusText" class="focustext"></p>
+    </div>
+    <h3 class="community">community representations <small>shared by link · stored only in this browser</small></h3>
+    <div id="community" class="community-list"></div>
+  </section>
+</main>
+
+<dialog id="submitDlg" aria-labelledby="submitTitle">
+  <form method="dialog" id="submitForm">
+    <h2 id="submitTitle">submit a representation</h2>
+    <p class="hint">There is no server: <b>the link is the submission</b>. It holds everything, in the part of the address after <code>#</code>, which browsers do not send to any website. Anyone who opens it sees your picture and can keep it.</p>
+    <div class="row">
+      <label>knowledge element
+        <select id="sEl"></select>
+      </label>
+      <label>depth
+        <select id="sDepth"></select>
+      </label>
+    </div>
+    <div id="sNewEl" class="row" hidden>
+      <label>new element title <input id="sNewTitle" maxlength="120"></label>
+      <label>what it says <textarea id="sNewText" rows="2" maxlength="2000"></textarea></label>
+    </div>
+    <div class="row">
+      <label>title <input id="sTitle" maxlength="120" required></label>
+      <label>author (optional) <input id="sAuthor" maxlength="80"></label>
+    </div>
+    <label>note (optional) <textarea id="sNote" rows="2" maxlength="1200"></textarea></label>
+    <fieldset class="row">
+      <legend>form</legend>
+      <label class="inline"><input type="radio" name="sKind" value="formula" checked> animated formula y = f(x, t)</label>
+      <label class="inline"><input type="radio" name="sKind" value="svg"> SVG animation (paste)</label>
+    </fieldset>
+    <div id="sFormula">
+      <label>y = <input id="sExpr" class="mono" value="exp(-0.25*x)*sin(4*x - 2*t)" maxlength="400"></label>
+      <div class="row">
+        <label>x from <input id="sX0" type="number" value="0" step="any"></label>
+        <label>to <input id="sX1" type="number" value="12" step="any"></label>
+        <label>y from <input id="sY0" type="number" value="-1.2" step="any"></label>
+        <label>to <input id="sY1" type="number" value="1.2" step="any"></label>
+        <label>loop T <input id="sT" type="number" value="6.283" step="any" min="0.1"></label>
+      </div>
+      <p class="hint">Allowed: numbers, x, t, pi, e, tau, + − × ÷ ^, and sin cos tan exp log sqrt abs floor ceil atan tanh sign min max pow clamp mod.</p>
+    </div>
+    <div id="sSvg" hidden>
+      <textarea id="sSvgText" class="mono" rows="8" spellcheck="false"></textarea>
+      <p class="hint">Plain SVG with SMIL or CSS animation. Scripts, event handlers, links, embedded images and external references are rejected. Submissions are always shown as images, which cannot run code.</p>
+    </div>
+    <div class="previewrow">
+      <div id="sPreview" class="preview"></div>
+      <p id="sError" class="error" role="alert"></p>
+    </div>
+    <div id="sLinkBox" class="linkbox" hidden>
+      <input id="sLink" readonly aria-label="Share link">
+      <button type="button" id="sCopy">copy</button>
+      <a id="sOpen" target="_blank" rel="noopener">open</a>
+    </div>
+    <menu>
+      <button type="button" id="sPreviewBtn">preview</button>
+      <button type="button" id="sShare" class="primary">create share link</button>
+      <button value="cancel">close</button>
+    </menu>
+  </form>
+</dialog>
+
+<dialog id="receivedDlg" aria-labelledby="receivedTitle">
+  <form method="dialog">
+    <h2 id="receivedTitle">a representation was shared with you</h2>
+    <p id="rMeta" class="meta"></p>
+    <div id="rPreview" class="preview big"></div>
+    <p id="rNote" class="focustext"></p>
+    <p id="rError" class="error" role="alert"></p>
+    <menu>
+      <button type="button" id="rKeep" class="primary">keep in my gallery</button>
+      <button type="button" id="rGo">show its element</button>
+      <button value="cancel">close</button>
+    </menu>
+  </form>
+</dialog>
+
+<dialog id="galleryDlg" aria-labelledby="galleryTitle">
+  <form method="dialog">
+    <h2 id="galleryTitle">my gallery</h2>
+    <p class="hint">Everything here lives in this browser only. Export it as a file, or share any item by link.</p>
+    <div id="galleryList" class="community-list"></div>
+    <menu>
+      <button type="button" id="gExport">export .json</button>
+      <label class="button">import .json <input id="gImport" type="file" accept="application/json" hidden></label>
+      <button value="cancel">close</button>
+    </menu>
+  </form>
+</dialog>
+
+<dialog id="helpDlg" aria-labelledby="helpTitle">
+  <form method="dialog">
+    <h2 id="helpTitle">about the atlas</h2>
+    <p>This atlas presents the examination <i>Kinetic friction and the human Avatar</i> (FRICTION_EXAMINATION.md in the project). Every knowledge element can be shown in five <b>forms</b> (words, graph, symbols, animation, interactive) at five <b>depths</b> (everyday, image, mechanism, formal, limits). At knowledge level <b>n</b> you see the first n forms × the first n depths, so <b>n² representations</b>. Raising n only adds the 2n + 1 new cells; nothing you have seen disappears. These counting facts are proved in Lean (RequestProject/Site/Grid.lean).</p>
+    <p>Elements marked <b>proved</b> rest on a Lean theorem in RequestProject/Friction. The Babel element is <b>interpretive</b>: its curves are illustrative, not measured. No theorem here establishes a claim about consciousness, myth or language.</p>
+    <p>The spoken tour uses your browser's speech synthesis. If it has none, the captions advance on a reading timer.</p>
+    <p>Links: <code>#at=element/depth/form&amp;n=3</code> opens a cell, <code>#tour=5</code> starts the tour at step 5, and <code>#share=…</code> carries a community submission.</p>
+    <menu><button value="cancel">close</button></menu>
+  </form>
+</dialog>
+
+<script src="js/expr.js"></script>
+<script src="js/svgkit.js"></script>
+<script src="js/knowledge.js"></script>
+<script src="js/grid.js"></script>
+<script src="js/share.js"></script>
+<script src="js/tour.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

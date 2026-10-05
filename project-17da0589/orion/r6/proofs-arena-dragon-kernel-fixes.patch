@@ -1,0 +1,35 @@
+diff --git a/lean/ProofsArenaDragon/ArenaKernel.lean b/lean/ProofsArenaDragon/ArenaKernel.lean
+index 708d9cf..3559b31 100644
+--- a/lean/ProofsArenaDragon/ArenaKernel.lean
++++ b/lean/ProofsArenaDragon/ArenaKernel.lean
+@@ -15,12 +15,12 @@ def blocksPublication : ArenaVerdict → Bool
+ def publishable (results : List ArenaVerdict) : Bool :=
+   !results.any blocksPublication
+ 
+-theorem vetoDominates (prefix suffix : List ArenaVerdict) :
+-    publishable (prefix ++ [.veto] ++ suffix) = false := by
++theorem vetoDominates (pre suffix : List ArenaVerdict) :
++    publishable (pre ++ [.veto] ++ suffix) = false := by
+   simp [publishable, blocksPublication]
+ 
+-theorem unresolvedFailsClosed (prefix suffix : List ArenaVerdict) :
+-    publishable (prefix ++ [.unresolved] ++ suffix) = false := by
++theorem unresolvedFailsClosed (pre suffix : List ArenaVerdict) :
++    publishable (pre ++ [.unresolved] ++ suffix) = false := by
+   simp [publishable, blocksPublication]
+ 
+ end ProofsArenaDragon
+diff --git a/lean/ProofsArenaDragon/DragonKernel.lean b/lean/ProofsArenaDragon/DragonKernel.lean
+index 886996e..30428f5 100644
+--- a/lean/ProofsArenaDragon/DragonKernel.lean
++++ b/lean/ProofsArenaDragon/DragonKernel.lean
+@@ -51,7 +51,8 @@ theorem skinOnlyPreservesAbilitySignature
+     (b : DragonBuild)
+     (skinAdd : List String) :
+     abilitySignature (curate b [] skinAdd []) = abilitySignature b := by
+-  rfl
++  unfold abilitySignature curate
++  rw [List.append_nil, List.append_nil]
+ 
+ def hatchPhoenix : DragonBuild :=
+   { species := "PHOENIX"

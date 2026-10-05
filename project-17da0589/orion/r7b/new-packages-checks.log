@@ -1,0 +1,79 @@
+# Checks run on Ryan's two new packages (ORION R7 Live, second pass), 2026-10-03, Python 3.11.14
+
+## Weaver_Integration_Demonstrator_v0.1.zip  sha256 a880c01ed6b56a244911a14377611ea977f2c79b7acc95b8a391ce116381aa24
+$ sha256sum -c SHA256SUMS.txt
+CLAIMS.md: OK
+README.md: OK
+VALIDATION.md: OK
+examples/checkpoint.json: OK
+examples/packet.json: OK
+examples/source.txt: OK
+pyproject.toml: OK
+tests/test_integration.py: OK
+weaver_demo/__init__.py: OK
+weaver_demo/__main__.py: OK
+weaver_demo/core.py: OK
+weaver_demo/verify.py: OK
+$ python -m unittest discover -s tests -v
+test_accept_and_replay (test_integration.IntegrationTests.test_accept_and_replay) ... ok
+test_corrupted_chain_blocks_execution (test_integration.IntegrationTests.test_corrupted_chain_blocks_execution) ... ok
+test_denials_preserve_state (test_integration.IntegrationTests.test_denials_preserve_state) ... ok
+test_duplicate_proposal (test_integration.IntegrationTests.test_duplicate_proposal) ... ok
+test_empty (test_integration.IntegrationTests.test_empty) ... ok
+test_forged_verdict_rehashed (test_integration.IntegrationTests.test_forged_verdict_rehashed) ... ok
+test_receipt_tamper (test_integration.IntegrationTests.test_receipt_tamper) ... ok
+test_schema (test_integration.IntegrationTests.test_schema) ... ok
+test_snapshot_tamper (test_integration.IntegrationTests.test_snapshot_tamper) ... ok
+test_source_tamper (test_integration.IntegrationTests.test_source_tamper) ... ok
+test_tail_truncation_with_checkpoint (test_integration.IntegrationTests.test_tail_truncation_with_checkpoint) ... ok
+test_unknown_lesson (test_integration.IntegrationTests.test_unknown_lesson) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.004s
+
+OK
+$ python -m weaver_demo demo --out run
+{"denied": "NO_GRANT", "accepted": "PASS", "replay": "REPLAY", "verification": "PASS"}
+$ python -m weaver_demo verify run/packet.json run/source.txt --checkpoint run/checkpoint.json
+VERIFIED
+$ cmp fresh run vs shipped examples/
+identical: packet.json
+identical: source.txt
+identical: checkpoint.json
+$ malformed-but-rehashed ledgers and kernel probes (mine, not in his tests)
+decision lesson_id is a list -> uncaught TypeError: unhashable type: 'list'
+claim is a string -> uncaught AttributeError: 'str' object has no attribute 'get'
+payload is a list -> uncaught TypeError: list indices must be integers or slices, not str
+denied command id reused, clock moved back 10 -> 5: NO_GRANT PASS
+
+## Loom_Mythos_Continuity_Kernel_v0.2.0.zip  sha256 5a1ce9e46411072e8e7b3d74bcece76b9a915fafc153754d61190320ac98f990
+$ check MANIFEST_SHA256.json
+22 files listed, 0 mismatches
+$ python -m unittest discover -s tests
+----------------------------------------------------------------------
+Ran 64 tests in 0.332s
+
+OK
+$ python tests/mutation_probe.py (summary)
+10 probes, 10 killed
+$ demo a.json
+{
+  "saved": "a.json",
+  "authority": "NONE",
+  "head": "8514563f066ca21e073e8417eee8b1975c2b6f5b5d35b2a40f16ee520210473b"
+}
+$ cmp a.json examples/demo_archive.json
+identical
+$ checkpoint + verify
+{
+  "valid": true,
+  "events": 15,
+  "authority": "NONE",
+$ apply a.json world_fact examples/conflicting_fact.json --branch world-a --checkpoint cp.json
+Rejected: World fact conflicts with the active contract
+exit code 2
+archive unchanged after rejection
+$ conflicts a.json --branch world-a --fact-payload examples/conflicting_fact.json (preview only)
+exit code 0
+  "consistent_known_facts": false,
+      "verdict": "VIOLATED",

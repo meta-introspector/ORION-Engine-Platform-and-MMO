@@ -1,0 +1,13 @@
+# ORION: review before any public launch
+
+A running checklist, not a decision to remove anyone's material. Added after the Round 10 note requesting a list of potentially questionable items. This concerns information and presentation, **not legal advice**. Review with the people concerned and seek appropriate advice where necessary. Do not copy private histories into this checklist.
+
+- [ ] **Personal-history attachment on the publicly accessible Round 9 page.** `ORION_CHRONICLES_RAW_BACKUP123025.txt` was reported in `ROUND_NINE_FOURTH_PASS.md` as containing personal conversations, including health, family and legal matters. Decide what to leave visible; check other people's information and children's information before publishing. The attachment is not reproduced here. The Round 10 page repeats the earlier note; this does not itself verify who can access it today.
+- [ ] **Children's identities and family photographs.** You said you keep family photo albums closed to let your children choose what to share. Check screenshots, archives and linked pages for identifying details or references to children before promotion; ask their permission where relevant. No photographs were copied into this checklist.
+- [ ] **Demo credentials.** The previously checked Bounded Receipt Runner package includes a demo private signing key (`ROUND_NINE_THIRD_PASS.md`). Ensure no public launch accepts signatures made with that demo key; provision fresh credentials privately.
+- [ ] **Gauntlet concept art.** “Active council 7/13” and “Quorum 9/13 reached” conflict if the labels refer to the same vote. Resolve the picture's counting context or update the labels. Correct the duplicate “Level 6” and apparent “DEBIFYING” typo. This is a concept-image issue, not a demonstrated flaw in software.
+- [ ] **Safety-language integrity.** The engine v5.4 sample substitutes inside words and rewrites `cannot` to `can` (`orion/r9d/orion-engine-v5.4-checks.log`). Check that any integrated app never alters safety instructions and never uses a garbled rendering as the authoritative source. The patch has not been verified against an integrated application.
+- [ ] **Greedy rulebook.** The old Greed scoring analysis was an illustrative assumption, not your actual game's rules. Upload and verify your rulebook before advertising a bust probability or payout figure for Greedy.
+- [ ] **Public links and art.** Check any content you intend to re-publish for attribution, accuracy and consent before a launch; the project link archive is an index of links, not a clearance or endorsement.
+
+Update this list when you bring new material, and decide what to remove or redact **before** going public. No automatic removal or public redistribution is intended.

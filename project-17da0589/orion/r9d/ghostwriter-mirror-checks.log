@@ -1,0 +1,9 @@
+## Ghostwriter-Mirror: test_governor.py as shipped (backend/governor_logic.py placed at core/governor_logic.py so the test's import works)
+=========================== short test summary info ============================
+FAILED test_governor.py::test_primary_directive - AssertionError: assert 'PRI...
+FAILED test_governor.py::test_watermelon_equation - AssertionError: assert 'w...
+2 failed in 0.03s
+
+## Safety-level cliff
+'love hope heal grow learn understand' -> 0
+'love hope heal grow learn understand and more words here' -> 115

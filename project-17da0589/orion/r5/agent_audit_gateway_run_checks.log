@@ -1,0 +1,89 @@
+test_authority_ledger_tamper_detected (test_gateway.GatewayV03Tests.test_authority_ledger_tamper_detected) ... ok
+test_authority_payload_edit_with_recomputed_hash_still_fails_signature (test_gateway.GatewayV03Tests.test_authority_payload_edit_with_recomputed_hash_still_fails_signature) ... ok
+test_authorized_proof_of_possession_execution_passes (test_gateway.GatewayV03Tests.test_authorized_proof_of_possession_execution_passes) ... ok
+test_chronicle_tamper_detected (test_gateway.GatewayV03Tests.test_chronicle_tamper_detected) ... ok
+test_corrupt_chronicle_fails_closed_on_restart (test_gateway.GatewayV03Tests.test_corrupt_chronicle_fails_closed_on_restart) ... ok
+test_cross_log_binding_detects_authority_tail_truncation_after_decision (test_gateway.GatewayV03Tests.test_cross_log_binding_detects_authority_tail_truncation_after_decision) ... ok
+test_delegated_resource_expansion_rejected (test_gateway.GatewayV03Tests.test_delegated_resource_expansion_rejected) ... ok
+test_delegated_tool_expansion_rejected_before_ledger_mutation (test_gateway.GatewayV03Tests.test_delegated_tool_expansion_rejected_before_ledger_mutation) ... ok
+test_duplicate_grant_issuance_rejected_without_append (test_gateway.GatewayV03Tests.test_duplicate_grant_issuance_rejected_without_append) ... ok
+test_durable_child_revocation_survives_restart (test_gateway.GatewayV03Tests.test_durable_child_revocation_survives_restart) ... ok
+test_external_revocation_is_observed_without_gateway_restart (test_gateway.GatewayV03Tests.test_external_revocation_is_observed_without_gateway_restart) ... ok
+test_forged_new_key_rotation_proof_rejected_before_append (test_gateway.GatewayV03Tests.test_forged_new_key_rotation_proof_rejected_before_append) ... ok
+test_historical_old_root_grant_remains_valid_after_rotation (test_gateway.GatewayV03Tests.test_historical_old_root_grant_remains_valid_after_rotation) ... ok
+test_http_adapter_rejects_legacy_unsigned_request_shape (test_gateway.GatewayV03Tests.test_http_adapter_rejects_legacy_unsigned_request_shape) ... ok
+test_invalid_request_signature_rejected_without_poisoning_id (test_gateway.GatewayV03Tests.test_invalid_request_signature_rejected_without_poisoning_id) ... ok
+test_issuance_timestamp_must_fall_inside_grant_window (test_gateway.GatewayV03Tests.test_issuance_timestamp_must_fall_inside_grant_window) ... ok
+test_live_http_signed_execution (test_gateway.GatewayV03Tests.test_live_http_signed_execution) ... ok
+test_mcp_lists_resource_augmented_schema (test_gateway.GatewayV03Tests.test_mcp_lists_resource_augmented_schema) ... ok
+test_mcp_tools_call_signs_request_and_executes (test_gateway.GatewayV03Tests.test_mcp_tools_call_signs_request_and_executes) ... ok
+test_mcp_unknown_method_is_protocol_error (test_gateway.GatewayV03Tests.test_mcp_unknown_method_is_protocol_error) ... ok
+test_mcp_wrong_signer_fails_proof_of_possession (test_gateway.GatewayV03Tests.test_mcp_wrong_signer_fails_proof_of_possession) ... ok
+test_modified_issued_grant_breaks_signature (test_gateway.GatewayV03Tests.test_modified_issued_grant_breaks_signature) ... ok
+test_new_root_can_issue_after_rotation (test_gateway.GatewayV03Tests.test_new_root_can_issue_after_rotation) ... ok
+test_new_root_can_revoke_old_issued_grant (test_gateway.GatewayV03Tests.test_new_root_can_revoke_old_issued_grant) ... ok
+test_old_root_cannot_issue_after_rotation (test_gateway.GatewayV03Tests.test_old_root_cannot_issue_after_rotation) ... ok
+test_old_root_cannot_revoke_after_rotation (test_gateway.GatewayV03Tests.test_old_root_cannot_revoke_after_rotation) ... ok
+test_parent_revocation_invalidates_descendant_chain (test_gateway.GatewayV03Tests.test_parent_revocation_invalidates_descendant_chain) ... ok
+test_receipt_binds_exact_authority_version (test_gateway.GatewayV03Tests.test_receipt_binds_exact_authority_version) ... ok
+test_replay_summary_includes_authenticated_requests_and_replays (test_gateway.GatewayV03Tests.test_replay_summary_includes_authenticated_requests_and_replays) ... ok
+test_request_expired_rejected (test_gateway.GatewayV03Tests.test_request_expired_rejected) ... ok
+test_request_not_yet_valid_rejected (test_gateway.GatewayV03Tests.test_request_not_yet_valid_rejected) ... ok
+test_request_replay_rejected_after_restart (test_gateway.GatewayV03Tests.test_request_replay_rejected_after_restart) ... ok
+test_request_replay_rejected_same_process (test_gateway.GatewayV03Tests.test_request_replay_rejected_same_process) ... ok
+test_request_ttl_ceiling_enforced (test_gateway.GatewayV03Tests.test_request_ttl_ceiling_enforced) ... ok
+test_resource_boundary_segment_aware (test_gateway.GatewayV03Tests.test_resource_boundary_segment_aware) ... ok
+test_revoked_parent_cannot_issue_child (test_gateway.GatewayV03Tests.test_revoked_parent_cannot_issue_child) ... ok
+test_root_rotation_requires_new_key_possession_and_succeeds (test_gateway.GatewayV03Tests.test_root_rotation_requires_new_key_possession_and_succeeds) ... ok
+test_schema_failure_consumes_request_id_but_not_single_use_grant (test_gateway.GatewayV03Tests.test_schema_failure_consumes_request_id_but_not_single_use_grant) ... ok
+test_single_use_grant_blocks_new_request_after_pass (test_gateway.GatewayV03Tests.test_single_use_grant_blocks_new_request_after_pass) ... ok
+test_tool_failure_rolls_back_and_consumes_authority (test_gateway.GatewayV03Tests.test_tool_failure_rolls_back_and_consumes_authority) ... ok
+test_tool_not_authorized (test_gateway.GatewayV03Tests.test_tool_not_authorized) ... ok
+test_unavailable_authorized_tool_does_not_consume_grant (test_gateway.GatewayV03Tests.test_unavailable_authorized_tool_does_not_consume_grant) ... ok
+test_unissued_root_grant_rejected (test_gateway.GatewayV03Tests.test_unissued_root_grant_rejected) ... ok
+test_unrecorded_delegated_grant_rejected (test_gateway.GatewayV03Tests.test_unrecorded_delegated_grant_rejected) ... ok
+test_valid_delegation_with_recorded_child_issuance_passes (test_gateway.GatewayV03Tests.test_valid_delegation_with_recorded_child_issuance_passes) ... ok
+test_wrong_actor_is_authenticated_but_policy_rejected (test_gateway.GatewayV03Tests.test_wrong_actor_is_authenticated_but_policy_rejected) ... ok
+test_wrong_request_signer_key_rejected (test_gateway.GatewayV03Tests.test_wrong_request_signer_key_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 47 tests in 1.346s
+
+OK
+{
+  "ok": true,
+  "reason": "verified 1 receipt(s)"
+}
+{
+  "receipts": 1,
+  "passes": 1,
+  "rejects": 0,
+  "errors": 0,
+  "consumed_grants": 1,
+  "authenticated_requests": 1,
+  "replay_rejections": 0,
+  "terminal_hash": "cbf695bd5f8c517ad4334b3f4f2369c92bf924d7dc4ed2e843ab00405af58293"
+}
+{
+  "ok": true,
+  "reason": "verified 1 authority event(s)",
+  "snapshot": {
+    "root_public_keys": {
+      "root-demo": "UjkDrRDIXsNhdPjlsOK1G8doIz2L9KvuIEN28ASmjfI="
+    },
+    "active_root_keys": [
+      "root-demo"
+    ],
+    "issued_grants": {
+      "grant-demo-1": "96847143e2714e7ee39e500fcb99f18941f90070f3cfa22960c0fa5465dbbe52"
+    },
+    "revoked_grants": [],
+    "terminal_hash": "00daf284f2dfbb1509f00b646a5b7edd0b1841fe4c4435dba2ef879a2dad9ffe",
+    "event_hashes": [
+      "00daf284f2dfbb1509f00b646a5b7edd0b1841fe4c4435dba2ef879a2dad9ffe"
+    ],
+    "events": 1
+  }
+}
+PASS EXECUTED {'resource': '/projects/alpha/output/result', 'written': True}
+authority_version 52aa250ea4da65ccb0333b5f0be02455bc84239fbfa5a443353278d1e4f8162e

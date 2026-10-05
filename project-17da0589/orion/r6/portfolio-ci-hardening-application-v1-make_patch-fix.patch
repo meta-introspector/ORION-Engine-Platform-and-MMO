@@ -1,0 +1,35 @@
+diff --git a/scripts/prepare_repo.py b/scripts/prepare_repo.py
+index 5742f09..d95fe0a 100644
+--- a/scripts/prepare_repo.py
++++ b/scripts/prepare_repo.py
+@@ -130,19 +130,20 @@ def build_changed_tree(repo: str, checkout: Path, work: Path):
+ 
+ def make_patch(checkout: Path, work: Path) -> str:
+     # Use no-index diff so this package never needs to mutate the checkout.
+-    cp = subprocess.run(
+-        ["git","diff","--no-index","--src-prefix=a/","--dst-prefix=b/",
+-         str(checkout),str(work)],
+-        capture_output=True,text=True
+-    )
++    # Diff a .git-free snapshot of the checkout against the changed tree, using
++    # relative directory names so the headers come out as a/<path> b/<path>.
++    with tempfile.TemporaryDirectory() as td:
++        base = Path(td)
++        shutil.copytree(checkout, base/"a", ignore=shutil.ignore_patterns(".git"))
++        shutil.copytree(work, base/"b", ignore=shutil.ignore_patterns(".git"))
++        cp = subprocess.run(
++            ["git","diff","--no-index","--src-prefix=","--dst-prefix=","a","b"],
++            capture_output=True,text=True,cwd=base
++        )
+     # git diff returns 1 when differences exist.
+     if cp.returncode not in (0,1):
+         raise RuntimeError(cp.stderr)
+-    text=cp.stdout
+-    # Strip absolute temp prefixes to readable paths.
+-    text=text.replace(str(checkout).rstrip("/")+"/","")
+-    text=text.replace(str(work).rstrip("/")+"/","")
+-    return text
++    return cp.stdout
+ 
+ def main():
+     ap=argparse.ArgumentParser()

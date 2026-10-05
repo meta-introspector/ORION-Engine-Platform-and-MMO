@@ -1,0 +1,32 @@
+diff -ru a/Main.lean b/Main.lean
+--- a/Main.lean	2026-10-04 04:16:34.472790589 +0000
++++ b/Main.lean	2026-10-04 04:16:34.544925787 +0000
+@@ -3,3 +3,5 @@
+ open POSM
+ 
+ #eval governanceV04
++
++def main : IO Unit := IO.println (repr governanceV04)
+diff -ru a/POSM/Composition.lean b/POSM/Composition.lean
+--- a/POSM/Composition.lean	2026-10-04 04:16:34.473668609 +0000
++++ b/POSM/Composition.lean	2026-10-04 04:16:34.532809498 +0000
+@@ -162,6 +162,5 @@
+     cumulativeBoundaryDrift G boundary t n ≤ (n : ℝ) * δ := hlin
+     _ ≤ (H : ℝ) * δ := by
+       gcongr
+-      exact_mod_cast hn
+ 
+ end POSM
+diff -ru a/POSM/Counterexample.lean b/POSM/Counterexample.lean
+--- a/POSM/Counterexample.lean	2026-10-04 04:16:34.474206619 +0000
++++ b/POSM/Counterexample.lean	2026-10-04 04:16:34.535873657 +0000
+@@ -24,7 +24,8 @@
+     intro a b c
+     by_cases hac : a = c
+     · subst c
+-      simp [natDiscreteDistance]
++      simp only [natDiscreteDistance, if_true]
++      split_ifs <;> norm_num
+     · by_cases hab : a = b
+       · subst b
+         simp [natDiscreteDistance, hac]
