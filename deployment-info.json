@@ -1,13 +1,15 @@
 {
-  "bundle_dir": "./output-final_aristotle/0f9b0981-1dc9-4321-a46b-53e3cc6ee6e3_deployed",
-  "bundle_size_bytes": 4096,
-  "deployed_at": "2026-09-27T16:48:35.575971543+00:00",
+  "bundle_dir": "./output-final_aristotle/17da0589-2bfc-44c4-8169-dbdb61676da2_deployed",
+  "bundle_size_bytes": 9543,
+  "deployed_at": "2026-10-05T14:22:11-04:00",
   "dry_run": false,
   "files_excluded_large": 0,
-  "files_included": 60,
-  "project_id": "0f9b0981-1dc9-4321-a46b-53e3cc6ee6e3",
+  "files_included": 138,
+  "project_id": "17da0589-2bfc-44c4-8169-dbdb61676da2",
   "sensitive_files_excluded": 0,
-  "source_dir": "./output-final_aristotle/0f9b0981-1dc9-4321-a46b-53e3cc6ee6e3_aristotle/output-final_aristotle",
-  "temp_files_excluded": 0,
-  "url": ""
+  "source_dir": "./output-final_aristotle/17da0589-2bfc-44c4-8169-dbdb61676da2_aristotle/output-final_aristotle",
+  "temp_files_excluded": 15,
+  "url": "https://orion-40y.pages.dev",
+  "commit": "c4f041cad",
+  "script": "deploy-orion.sh"
 }
