@@ -1,15 +1,19 @@
 {
-  "bundle_dir": "./output-final_aristotle/17da0589-2bfc-44c4-8169-dbdb61676da2_deployed",
-  "bundle_size_bytes": 9543,
-  "deployed_at": "2026-10-05T14:22:11-04:00",
+  "bundle_dir": "./merged-projects/merged/output-final_aristotle",
+  "bundle_size_bytes": 150,
+  "deployed_at": "2026-10-05T23:58:58-04:00",
   "dry_run": false,
   "files_excluded_large": 0,
-  "files_included": 138,
-  "project_id": "17da0589-2bfc-44c4-8169-dbdb61676da2",
+  "files_included": 165,
+  "project_ids": [
+    "17da0589-2bfc-44c4-8169-dbdb61676da2 (newer)",
+    "0f9b0981-20e1-40ac-8da1-7ea508d9520c (older)"
+  ],
   "sensitive_files_excluded": 0,
-  "source_dir": "./output-final_aristotle/17da0589-2bfc-44c4-8169-dbdb61676da2_aristotle/output-final_aristotle",
+  "source_dir": "./merged-projects/merged/output-final_aristotle",
   "temp_files_excluded": 15,
-  "url": "https://orion-40y.pages.dev",
-  "commit": "c4f041cad",
-  "script": "deploy-orion.sh"
+  "url": "https://orion-clean.orion-40y.pages.dev / https://bea270a6.orion-40y.pages.dev",
+  "commit": "832b842dd",
+  "script": "merge-projects.sh + deploy-orion.sh",
+  "version": "2.0"
 }

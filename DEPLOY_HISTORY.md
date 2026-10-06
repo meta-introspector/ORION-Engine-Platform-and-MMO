@@ -6,6 +6,7 @@ Deployed via [deploy-orion.sh](../../deploy-orion.sh) - Aristotle Manager → Cl
 
 | # | Project ID | Deployed At | Files | Status | URL |
 |---|-----------|-------------|-------|--------|-----|
+| 2 | `17da0589 + 0f9b0981` (merged) | 2026-10-05 23:58:58 UTC-04:00 | 165 | ✅ deployed | https://orion-clean.orion-40y.pages.dev |
 | 1 | `17da0589-2bfc-44c4-8169-dbdb61676da2` | 2026-10-05 14:22:11 UTC-04:00 | 138 | ✅ deployed | https://orion-40y.pages.dev |
 | 0 | `0f9b0981-1dc9-4321-a46b-53e3cc6ee6e3` | 2026-09-27 16:48:35 UTC | 60 | ✅ deployed | - |
 
